@@ -13,6 +13,12 @@ import {
   PARTS_BY_ID,
 } from './data/anatomyDatabase';
 import {
+  fetchHdManifest,
+  HD_PART_IDS,
+  HdManifest,
+  HdPartStatus,
+} from './three/HighPolyAssetManager';
+import {
   CameraPreset,
   DissectionMode,
   ImagingMode,
@@ -67,6 +73,15 @@ export const App: React.FC = () => {
   );
   const [heartRateBpm, setHeartRateBpm] = useState(72);
   const [searchOpen, setSearchOpen] = useState(false);
+  const [hdManifest, setHdManifest] = useState<HdManifest | null>(null);
+  const [hdPartStates, setHdPartStates] = useState<Record<string, HdPartStatus>>({});
+  const [preloadAllHdTick, setPreloadAllHdTick] = useState(0);
+
+  useEffect(() => {
+    void fetchHdManifest().then((m) => {
+      if (m) setHdManifest(m);
+    });
+  }, []);
 
   const progressBarRef = useRef<HTMLDivElement | null>(null);
   const lastScrollYRef = useRef<number>(
@@ -333,6 +348,15 @@ export const App: React.FC = () => {
     setModelError(msg);
   }, []);
 
+  const handleHdStatusChange = useCallback((partId: string, status: HdPartStatus) => {
+    setHdPartStates((prev) =>
+      prev[partId] === status ? prev : { ...prev, [partId]: status }
+    );
+  }, []);
+
+  const hdLoadedCount = HD_PART_IDS.filter((id) => hdPartStates[id] === 'loaded').length;
+  const hdLoadingCount = HD_PART_IDS.filter((id) => hdPartStates[id] === 'loading').length;
+
   const isolatedPart = isolatedPartId ? PARTS_BY_ID[isolatedPartId] : null;
 
   return (
@@ -419,10 +443,12 @@ export const App: React.FC = () => {
         cameraPreset={cameraPreset}
         cameraPresetTick={cameraPresetTick}
         zoomCommand={zoomCommand}
+        preloadAllHdTick={preloadAllHdTick}
         onSelectPart={handleSelectPart}
         onIsolatePart={handleIsolatePart}
         onModelReady={handleModelReady}
         onModelError={handleModelError}
+        onHdStatusChange={handleHdStatusChange}
       />
 
       {/* Top Minimal VisionOS Frosted Status Pill */}
@@ -477,6 +503,9 @@ export const App: React.FC = () => {
         isPlaying={isPlaying}
         cameraPreset={cameraPreset}
         hasDrawerOpen={Boolean(selectedPartId)}
+        hdLoadedCount={hdLoadedCount}
+        hdTotalCount={HD_PART_IDS.length}
+        hdLoadingCount={hdLoadingCount}
         onManualProgress={handleManualProgress}
         onToggleAutoDissect={() => setAutoDissect((v) => !v)}
         onChangeDissectionMode={handleChangeDissectionMode}
@@ -487,6 +516,7 @@ export const App: React.FC = () => {
         onToggleAutoSpin={() => setAutoSpin((v) => !v)}
         onTogglePins={() => setShowPins((v) => !v)}
         onTogglePlay={() => setIsPlaying((v) => !v)}
+        onPreloadAllHd={() => setPreloadAllHdTick((t) => t + 1)}
       />
 
       {/* Right VisionOS Clinical Profile Inspector Window */}
@@ -494,6 +524,8 @@ export const App: React.FC = () => {
         partId={selectedPartId}
         isolatedPartId={isolatedPartId}
         isolationGhostContext={isolationGhostContext}
+        hdStatus={selectedPartId ? hdPartStates[selectedPartId] : undefined}
+        hdInfo={selectedPartId ? hdManifest?.parts[selectedPartId] : undefined}
         onClose={() => {
           setSelectedPartId(null);
           setIsolatedPartId(null);

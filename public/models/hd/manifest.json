@@ -1,0 +1,128 @@
+{
+  "generatedAt": "2026-11-22T11:47:22.314Z",
+  "baseSkeleton": {
+    "rawBytes": 5448444,
+    "compressedBytes": 286612,
+    "triangles": 51650,
+    "meshes": 21
+  },
+  "parts": {
+    "organ_heart": {
+      "file": "heart.glb",
+      "source": "BodyParts3D / OrganUI heart-3d (11 cardiac structures)",
+      "license": "CC BY 4.0",
+      "triangles": 96724,
+      "meshes": 11,
+      "rawBytes": 2524400,
+      "compressedBytes": 321516
+    },
+    "organ_brain_cerebrum": {
+      "file": "cerebrum.glb",
+      "source": "BodyParts3D / OrganUI brain-3d (Cortical lobes, limbic & ventricles)",
+      "license": "CC BY 4.0",
+      "triangles": 130892,
+      "meshes": 13,
+      "rawBytes": 5865004,
+      "compressedBytes": 430380
+    },
+    "organ_brain_cerebellum": {
+      "file": "cerebellum.glb",
+      "source": "BodyParts3D / OrganUI brain-3d (Cerebellum, Midbrain, Pons, Medulla)",
+      "license": "CC BY 4.0",
+      "triangles": 101528,
+      "meshes": 6,
+      "rawBytes": 5865004,
+      "compressedBytes": 312952
+    },
+    "organ_lungs": {
+      "file": "lungs.glb",
+      "source": "BodyParts3D / OrganUI lungs-3d (Pulmonary lobes & bronchial tree)",
+      "license": "CC BY-SA 2.1 JP",
+      "triangles": 165844,
+      "meshes": 20,
+      "rawBytes": 3901260,
+      "compressedBytes": 611736
+    },
+    "organ_liver": {
+      "file": "liver.glb",
+      "source": "BodyParts3D / OrganUI liver-3d (Liver, Gallbladder, Portal & Hepatic ducts)",
+      "license": "CC BY 4.0",
+      "triangles": 218056,
+      "meshes": 7,
+      "rawBytes": 5579432,
+      "compressedBytes": 650324
+    },
+    "organ_stomach": {
+      "file": "stomach.glb",
+      "source": "BodyParts3D / OrganUI stomach-3d (Gastric chamber, duodenum & arterial supply)",
+      "license": "CC BY-SA 2.1 JP",
+      "triangles": 22828,
+      "meshes": 5,
+      "rawBytes": 1161368,
+      "compressedBytes": 70036
+    },
+    "organ_kidneys": {
+      "file": "kidneys.glb",
+      "source": "BodyParts3D / OrganUI kidneys-3d (Kidneys, Ureters & Renal arteries)",
+      "license": "CC BY 4.0",
+      "triangles": 14390,
+      "meshes": 6,
+      "rawBytes": 380208,
+      "compressedBytes": 55460
+    },
+    "organ_intestines": {
+      "file": "intestines.glb",
+      "source": "BodyParts3D / OrganUI intestines-3d (Small & Large Intestines)",
+      "license": "CC BY-SA 2.1 JP",
+      "triangles": 75496,
+      "meshes": 11,
+      "rawBytes": 2366084,
+      "compressedBytes": 292020
+    },
+    "SM_HumanSkeleton_17": {
+      "file": "cranium.glb",
+      "source": "BodyParts3D / OrganUI skeleton-3d (21 Cranial & Facial Bones)",
+      "license": "CC BY-SA 2.1 JP",
+      "triangles": 23772,
+      "meshes": 21,
+      "rawBytes": 5221116,
+      "compressedBytes": 104492
+    },
+    "SM_HumanSkeleton_18": {
+      "file": "mandible.glb",
+      "source": "BodyParts3D / OrganUI skeleton-3d (Mandible)",
+      "license": "CC BY-SA 2.1 JP",
+      "triangles": 1810,
+      "meshes": 1,
+      "rawBytes": 5221116,
+      "compressedBytes": 7856
+    },
+    "SM_HumanSkeleton_08": {
+      "file": "thorax.glb",
+      "source": "BodyParts3D / OrganUI skeleton-3d (Sternum, 24 Ribs & Costal Cartilages)",
+      "license": "CC BY-SA 2.1 JP",
+      "triangles": 79428,
+      "meshes": 43,
+      "rawBytes": 5221116,
+      "compressedBytes": 301616
+    },
+    "SM_HumanSkeleton_20": {
+      "file": "spine.glb",
+      "source": "BodyParts3D / OrganUI skeleton-3d (Vertebral Column & Intervertebral Discs)",
+      "license": "CC BY-SA 2.1 JP",
+      "triangles": 43898,
+      "meshes": 47,
+      "rawBytes": 5221116,
+      "compressedBytes": 202248
+    },
+    "SM_HumanSkeleton_16": {
+      "file": "pelvis.glb",
+      "source": "BodyParts3D / OrganUI skeleton-3d (Sacrum & Bilateral Hip Bones)",
+      "license": "CC BY-SA 2.1 JP",
+      "triangles": 9248,
+      "meshes": 3,
+      "rawBytes": 5221116,
+      "compressedBytes": 35308
+    }
+  }
+}

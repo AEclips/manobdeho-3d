@@ -6,6 +6,7 @@ import {
   RotateCcw,
   RotateCw,
   Scan,
+  Sparkles,
   Split,
   Tag,
   ZoomIn,
@@ -24,6 +25,9 @@ interface ViewportDockProps {
   isPlaying: boolean;
   cameraPreset: CameraPreset;
   hasDrawerOpen: boolean;
+  hdLoadedCount: number;
+  hdTotalCount: number;
+  hdLoadingCount: number;
   onManualProgress: (val: number) => void;
   onToggleAutoDissect: () => void;
   onChangeDissectionMode: (mode: DissectionMode) => void;
@@ -34,6 +38,7 @@ interface ViewportDockProps {
   onToggleAutoSpin: () => void;
   onTogglePins: () => void;
   onTogglePlay: () => void;
+  onPreloadAllHd: () => void;
 }
 
 const PRESETS: Array<{ id: CameraPreset; label: string }> = [
@@ -55,6 +60,9 @@ export const ViewportDock: React.FC<ViewportDockProps> = ({
   isPlaying,
   cameraPreset,
   hasDrawerOpen,
+  hdLoadedCount,
+  hdTotalCount,
+  hdLoadingCount,
   onManualProgress,
   onToggleAutoDissect,
   onChangeDissectionMode,
@@ -65,7 +73,9 @@ export const ViewportDock: React.FC<ViewportDockProps> = ({
   onToggleAutoSpin,
   onTogglePins,
   onTogglePlay,
+  onPreloadAllHd,
 }) => {
+  const allHdLoaded = hdTotalCount > 0 && hdLoadedCount >= hdTotalCount;
   const imagingLabel =
     imagingMode === 'realistic'
       ? 'PBR'
@@ -128,6 +138,24 @@ export const ViewportDock: React.FC<ViewportDockProps> = ({
             >
               <Scan size={12} />
               <span>{imagingLabel}</span>
+            </button>
+
+            <button
+              type="button"
+              className={`spatial-pill-btn ${allHdLoaded || hdLoadingCount > 0 ? 'active' : ''}`}
+              onClick={onPreloadAllHd}
+              disabled={allHdLoaded || hdLoadingCount > 0}
+              title="Stream all high-poly Draco medical GLBs asynchronously"
+              aria-label={`Stream high-poly medical models (${hdLoadedCount} of ${hdTotalCount} loaded)`}
+            >
+              <Sparkles size={12} />
+              <span>
+                {allHdLoaded
+                  ? 'HD ✓'
+                  : hdLoadingCount > 0
+                    ? `HD ${hdLoadedCount}/${hdTotalCount}…`
+                    : `HD ${hdLoadedCount}/${hdTotalCount}`}
+              </span>
             </button>
           </div>
         </div>

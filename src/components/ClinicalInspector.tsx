@@ -9,11 +9,14 @@ import {
   EyeOff,
   Focus,
   Gauge,
+  Loader2,
+  Sparkles,
   Stethoscope,
   X,
   Zap,
 } from 'lucide-react';
 import { ANATOMY_PARTS, PARTS_BY_ID, SYSTEM_MAP } from '../data/anatomyDatabase';
+import { HdManifestEntry, HdPartStatus } from '../three/HighPolyAssetManager';
 
 type InspectorTabId = 'overview' | 'neurovascular' | 'clinical';
 type LangMode = 'both' | 'bn' | 'en';
@@ -22,6 +25,8 @@ interface ClinicalInspectorProps {
   partId: string | null;
   isolatedPartId: string | null;
   isolationGhostContext: boolean;
+  hdStatus?: HdPartStatus;
+  hdInfo?: HdManifestEntry | null;
   onClose: () => void;
   onSelectPart: (partId: string) => void;
   onToggleIsolate: (partId: string) => void;
@@ -38,6 +43,8 @@ export const ClinicalInspector: React.FC<ClinicalInspectorProps> = ({
   partId,
   isolatedPartId,
   isolationGhostContext,
+  hdStatus,
+  hdInfo,
   onClose,
   onSelectPart,
   onToggleIsolate,
@@ -260,6 +267,35 @@ export const ClinicalInspector: React.FC<ClinicalInspectorProps> = ({
             </button>
           </div>
         </div>
+
+        {/* High-Poly On-Demand Medical Mesh Streaming Status */}
+        {(hdInfo || (hdStatus && hdStatus !== 'idle')) && (
+          <div
+            className={`spatial-hd-badge ${hdStatus === 'loaded' ? 'loaded' : ''} ${
+              hdStatus === 'loading' ? 'loading' : ''
+            }`}
+          >
+            {hdStatus === 'loading' ? (
+              <>
+                <Loader2
+                  size={11}
+                  style={{ animation: 'spin 0.9s linear infinite', color: '#7dd3fc' }}
+                />
+                <span>Streaming HD Medical Mesh (Draco)...</span>
+              </>
+            ) : hdStatus === 'error' ? (
+              <span>Proxy Mesh Active (HD offline)</span>
+            ) : hdInfo ? (
+              <>
+                <Sparkles size={11} color="#5eead4" />
+                <span>
+                  HD Medical Mesh • {hdInfo.triangles.toLocaleString()} tris •{' '}
+                  {Math.round(hdInfo.compressedBytes / 1024)} KB (Draco)
+                </span>
+              </>
+            ) : null}
+          </div>
+        )}
 
         {/* VisionOS Segmented Tabs (WAI-ARIA compliant with aria-selected + non-color underline) */}
         <div

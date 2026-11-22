@@ -873,6 +873,31 @@ input[type='range'].spatial-range::-webkit-slider-thumb {
   color: #fff;
 }
 
+.spatial-hd-badge {
+  margin-top: 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+.spatial-hd-badge.loaded {
+  background: rgba(94, 234, 212, 0.14);
+  border-color: rgba(94, 234, 212, 0.42);
+  color: #ccfbf1;
+}
+.spatial-hd-badge.loading {
+  background: rgba(56, 189, 248, 0.16);
+  border-color: rgba(125, 211, 252, 0.45);
+  color: #e0f2fe;
+}
+
 /* VisionOS Segmented Tabs (WAI-ARIA compliant non-color underline) */
 .spatial-tabs {
   display: flex;
@@ -1197,6 +1222,9 @@ dialog::backdrop {
   .rail-btn {
     width: 31px;
     height: 31px;
+  }
+  .rail-tooltip {
+    display: none;
   }
   .story-section {
     padding: 64px 12px 118px 54px;

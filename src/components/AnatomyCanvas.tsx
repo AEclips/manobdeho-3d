@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
-import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 import {
   ANATOMY_PARTS,
   CHAPTERS,
@@ -9,6 +9,15 @@ import {
   SYSTEM_MAP,
 } from '../data/anatomyDatabase';
 import { buildSculptedAnatomy, SculptedAnatomyResult } from '../three/AnatomySculptor';
+import {
+  createDracoGltfLoader,
+  createMicroBumpTexture,
+  HD_PART_CONFIGS,
+  HD_PART_IDS,
+  HdPartStatus,
+  loadHdPartScene,
+  upgradeHdOrganMaterial,
+} from '../three/HighPolyAssetManager';
 import {
   CameraPreset,
   DissectionMode,
@@ -39,10 +48,12 @@ interface AnatomyCanvasProps {
   cameraPreset: CameraPreset;
   cameraPresetTick: number;
   zoomCommand: { delta: number; tick: number } | null;
+  preloadAllHdTick: number;
   onSelectPart: (partId: string | null) => void;
   onIsolatePart: (partId: string) => void;
   onModelReady: (loadedCount: number) => void;
   onModelError: (errMsg: string) => void;
+  onHdStatusChange: (partId: string, status: HdPartStatus) => void;
 }
 
 interface PinScreenPos {
@@ -70,13 +81,18 @@ export const AnatomyCanvas: React.FC<AnatomyCanvasProps> = ({
   cameraPreset,
   cameraPresetTick,
   zoomCommand,
+  preloadAllHdTick,
   onSelectPart,
   onIsolatePart,
   onModelReady,
   onModelError,
+  onHdStatusChange,
 }) => {
   const mountRef = useRef<HTMLDivElement | null>(null);
   const pinsRef = useRef<HTMLDivElement | null>(null);
+  const hdTriggerRef = useRef<((partId: string) => Promise<void>) | null>(null);
+  const onHdStatusChangeRef = useRef(onHdStatusChange);
+  onHdStatusChangeRef.current = onHdStatusChange;
   const [hoveredId, setHoveredId] = useState<string | null>(null);
   const [hoverScreenPos, setHoverScreenPos] = useState<{ x: number; y: number }>({
     x: 0,
@@ -162,6 +178,17 @@ export const AnatomyCanvas: React.FC<AnatomyCanvasProps> = ({
     renderer.toneMappingExposure = 1.18;
     container.appendChild(renderer.domElement);
 
+    // Subtle studio PBR environment reflections for smooth cortical bone & organ contours
+    const pmremGenerator = new THREE.PMREMGenerator(renderer);
+    const studioEnv = new RoomEnvironment();
+    const envRenderTarget = pmremGenerator.fromScene(studioEnv, 0.04);
+    studioEnv.dispose();
+    scene.environment = envRenderTarget.texture;
+    scene.environmentIntensity = 0.5;
+
+    const boneMicroTex = createMicroBumpTexture('bone');
+    const organMicroTex = createMicroBumpTexture('organ');
+
     const controls = new OrbitControls(camera, renderer.domElement);
     controls.enableDamping = true;
     controls.dampingFactor = 0.07;
@@ -225,10 +252,12 @@ export const AnatomyCanvas: React.FC<AnatomyCanvasProps> = ({
 
     const boneBaseMat = new THREE.MeshPhysicalMaterial({
       color: 0xf1ebe0,
-      roughness: 0.44,
+      roughness: 0.42,
       metalness: 0.04,
-      clearcoat: 0.14,
-      clearcoatRoughness: 0.55,
+      clearcoat: 0.16,
+      clearcoatRoughness: 0.52,
+      bumpMap: boneMicroTex,
+      bumpScale: 0.012,
       transparent: true,
       opacity: 1.0,
     });
@@ -250,7 +279,15 @@ export const AnatomyCanvas: React.FC<AnatomyCanvasProps> = ({
     const allPartGroups: Record<string, THREE.Group> = {
       ...sculpted.partGroups,
     };
+    const restLocalBoxes = new Map<
+      string,
+      { center: THREE.Vector3; size: THREE.Vector3 }
+    >();
     const boneMaterialsById: Record<string, THREE.MeshPhysicalMaterial> = {};
+    const hdLoadedSet = new Set<string>();
+    const hdInFlightSet = new Set<string>();
+    const pendingHdAfterSkeleton = new Set<string>();
+    const hdMaterialsToDispose: THREE.Material[] = [];
     const originalSculptColors = new Map<
       THREE.Material,
       { color: number; emissive: number; emissiveIntensity: number; opacity: number }
@@ -266,7 +303,16 @@ export const AnatomyCanvas: React.FC<AnatomyCanvasProps> = ({
       });
     });
 
-    Object.values(sculpted.partGroups).forEach((grp) => {
+    Object.entries(sculpted.partGroups).forEach(([partId, grp]) => {
+      // Measure rest-pose local bounding box before adding to anatomicalRoot or exploding
+      grp.updateMatrixWorld(true);
+      const b = new THREE.Box3().setFromObject(grp);
+      if (!b.isEmpty()) {
+        restLocalBoxes.set(partId, {
+          center: b.getCenter(new THREE.Vector3()),
+          size: b.getSize(new THREE.Vector3()),
+        });
+      }
       anatomicalRoot.add(grp);
     });
 
@@ -301,9 +347,213 @@ export const AnatomyCanvas: React.FC<AnatomyCanvasProps> = ({
       partOriginalMaterials.set(partId, entries);
     });
 
-    /* -------------------- 4. LOAD REAL GLB SKELETON & DERMAL ENVELOPE -------------------- */
+    /* -------------------- 4. LOAD DRACO-COMPRESSED BASE SKELETON & ENVELOPE -------------------- */
     let isDisposed = false;
-    const loader = new GLTFLoader();
+    let baseSkeletonLoaded = false;
+
+    const ensureHdPartLoaded = async (partId: string): Promise<void> => {
+      const cfg = HD_PART_CONFIGS[partId];
+      if (!cfg || isDisposed || hdLoadedSet.has(partId) || hdInFlightSet.has(partId)) {
+        return;
+      }
+
+      if (!baseSkeletonLoaded && PARTS_BY_ID[partId]?.glbMeshName) {
+        pendingHdAfterSkeleton.add(partId);
+        return;
+      }
+
+      const partGroup = allPartGroups[partId];
+      const baseBox = restLocalBoxes.get(partId);
+      if (!partGroup || !baseBox) return;
+
+      hdInFlightSet.add(partId);
+      onHdStatusChangeRef.current(partId, 'loading');
+
+      try {
+        const template = await loadHdPartScene(partId);
+        if (isDisposed) return;
+
+        const hdScene = template.clone(true);
+        if (cfg.rotY) {
+          hdScene.rotation.y = cfg.rotY;
+        }
+        hdScene.updateMatrixWorld(true);
+
+        const hdBox = new THREE.Box3().setFromObject(hdScene);
+        const hdSize = hdBox.getSize(new THREE.Vector3());
+        const hdCenter = hdBox.getCenter(new THREE.Vector3());
+
+        const sx = baseBox.size.x / Math.max(hdSize.x, 1e-4);
+        const sy = baseBox.size.y / Math.max(hdSize.y, 1e-4);
+        const sz = baseBox.size.z / Math.max(hdSize.z, 1e-4);
+        const fitScale = Math.min(sx, sy, sz) * (cfg.scaleFit ?? 1.0);
+
+        const sourceMatCache = new Map<THREE.Material, THREE.MeshPhysicalMaterial>();
+        const hdPartEntries: Array<{
+          mesh: THREE.Mesh;
+          baseMat: THREE.MeshStandardMaterial | THREE.MeshPhysicalMaterial;
+        }> = [];
+        const boneMat = boneMaterialsById[partId];
+
+        hdScene.traverse((child) => {
+          child.userData.partId = partId;
+          if ((child as THREE.Mesh).isMesh) {
+            const mesh = child as THREE.Mesh;
+            mesh.castShadow = true;
+            mesh.receiveShadow = true;
+
+            if (cfg.profile === 'bone' && boneMat) {
+              mesh.material = boneMat;
+            } else {
+              const rawMat = Array.isArray(mesh.material)
+                ? mesh.material[0]
+                : mesh.material;
+              let upgraded = sourceMatCache.get(rawMat);
+              if (!upgraded) {
+                upgraded = upgradeHdOrganMaterial(
+                  mesh.material,
+                  cfg.profile,
+                  organMicroTex
+                );
+                sourceMatCache.set(rawMat, upgraded);
+                hdMaterialsToDispose.push(upgraded);
+                originalSculptColors.set(upgraded, {
+                  color: upgraded.color.getHex(),
+                  emissive: upgraded.emissive ? upgraded.emissive.getHex() : 0x000000,
+                  emissiveIntensity: upgraded.emissiveIntensity ?? 0,
+                  opacity: upgraded.opacity,
+                });
+              }
+              mesh.material = upgraded;
+              hdPartEntries.push({ mesh, baseMat: upgraded });
+            }
+          }
+        });
+
+        if (cfg.profile !== 'bone' && hdPartEntries.length > 0) {
+          partOriginalMaterials.set(partId, hdPartEntries);
+        }
+
+        if (cfg.mountInHeartPivot && sculpted.animatedRefs.heartGroup) {
+          const beatPivot = sculpted.animatedRefs.heartGroup;
+          [...beatPivot.children].forEach((c) => beatPivot.remove(c));
+
+          const hdHolder = new THREE.Group();
+          hdHolder.position.copy(baseBox.center).sub(beatPivot.position);
+          hdHolder.scale.setScalar(fitScale);
+          hdScene.position.copy(hdCenter).multiplyScalar(-1);
+          hdHolder.add(hdScene);
+          beatPivot.add(hdHolder);
+        } else if (cfg.bilateral && partGroup.userData.isBilateral) {
+          const rightSub =
+            partGroup.children.find((c) => c.userData.bilateralSide === -1) ??
+            partGroup;
+          const leftSub =
+            partGroup.children.find((c) => c.userData.bilateralSide === 1) ??
+            partGroup;
+          const centerSub =
+            partGroup.children.find((c) => c.userData.bilateralSide === 0) ??
+            partGroup;
+
+          [rightSub, leftSub, centerSub].forEach((sub) => {
+            [...sub.children].forEach((c) => sub.remove(c));
+          });
+
+          const collectMeshes: Array<{
+            mesh: THREE.Mesh;
+            side: -1 | 0 | 1;
+            restCenter: THREE.Vector3;
+          }> = [];
+
+          hdScene.traverse((obj) => {
+            if ((obj as THREE.Mesh).isMesh) {
+              const m = obj as THREE.Mesh;
+              const mb = new THREE.Box3().setFromObject(m);
+              const mc = mb.getCenter(new THREE.Vector3());
+              const relX = mc.x - hdCenter.x;
+              let side: -1 | 0 | 1 = 0;
+              if (/^right-/i.test(m.name)) side = -1;
+              else if (/^left-/i.test(m.name)) side = 1;
+              else if (relX < -hdSize.x * 0.08) side = -1;
+              else if (relX > hdSize.x * 0.08) side = 1;
+
+              const restCenter = mc
+                .clone()
+                .sub(hdCenter)
+                .multiplyScalar(fitScale)
+                .add(baseBox.center);
+              collectMeshes.push({ mesh: m, side, restCenter });
+            }
+          });
+
+          const addMeshesWithCenterPivot = (
+            targetSub: THREE.Object3D,
+            items: typeof collectMeshes
+          ): THREE.Group | undefined => {
+            if (items.length === 0) return undefined;
+            const avgCenter = new THREE.Vector3();
+            items.forEach((it) => avgCenter.add(it.restCenter));
+            avgCenter.divideScalar(items.length);
+
+            const pivot = new THREE.Group();
+            pivot.position.copy(avgCenter);
+
+            const inner = new THREE.Group();
+            inner.scale.setScalar(fitScale);
+            inner.position
+              .copy(baseBox.center)
+              .sub(avgCenter)
+              .addScaledVector(hdCenter, -fitScale);
+
+            items.forEach((it) => inner.add(it.mesh));
+            pivot.add(inner);
+            targetSub.add(pivot);
+            return pivot;
+          };
+
+          const rPivot = addMeshesWithCenterPivot(
+            rightSub,
+            collectMeshes.filter((i) => i.side === -1)
+          );
+          const lPivot = addMeshesWithCenterPivot(
+            leftSub,
+            collectMeshes.filter((i) => i.side === 1)
+          );
+          addMeshesWithCenterPivot(
+            centerSub,
+            collectMeshes.filter((i) => i.side === 0)
+          );
+
+          if (partId === 'organ_lungs') {
+            if (rPivot) sculpted.animatedRefs.rightLung = rPivot;
+            if (lPivot) sculpted.animatedRefs.leftLung = lPivot;
+          }
+        } else {
+          [...partGroup.children].forEach((c) => partGroup.remove(c));
+
+          const hdHolder = new THREE.Group();
+          hdHolder.position.copy(baseBox.center);
+          hdHolder.scale.setScalar(fitScale);
+          hdScene.position.copy(hdCenter).multiplyScalar(-1);
+          hdHolder.add(hdScene);
+          partGroup.add(hdHolder);
+        }
+
+        hdLoadedSet.add(partId);
+        hdInFlightSet.delete(partId);
+        onHdStatusChangeRef.current(partId, 'loaded');
+      } catch (err) {
+        hdInFlightSet.delete(partId);
+        if (!isDisposed) {
+          console.error(`HD load failed for ${partId}:`, err);
+          onHdStatusChangeRef.current(partId, 'error');
+        }
+      }
+    };
+
+    hdTriggerRef.current = ensureHdPartLoaded;
+
+    const loader = createDracoGltfLoader();
     loader.load(
       `${import.meta.env.BASE_URL}models/human-skeleton.glb`,
       (gltf) => {
@@ -354,12 +604,31 @@ export const AnatomyCanvas: React.FC<AnatomyCanvasProps> = ({
             }
           }
 
+          // Capture rest-pose local bounding box before adding to anatomicalRoot
+          partGroup.updateMatrixWorld(true);
+          const b = new THREE.Box3().setFromObject(partGroup);
+          if (!b.isEmpty()) {
+            restLocalBoxes.set(part.id, {
+              center: b.getCenter(new THREE.Vector3()),
+              size: b.getSize(new THREE.Vector3()),
+            });
+          }
+
           anatomicalRoot.add(partGroup);
           allPartGroups[part.id] = partGroup;
           loadedCount++;
         });
 
+        baseSkeletonLoaded = true;
         onModelReady(loadedCount);
+
+        if (pendingHdAfterSkeleton.size > 0) {
+          const queued = [...pendingHdAfterSkeleton];
+          pendingHdAfterSkeleton.clear();
+          queued.forEach((pid) => {
+            void ensureHdPartLoaded(pid);
+          });
+        }
       },
       undefined,
       (err) => {
@@ -986,6 +1255,7 @@ export const AnatomyCanvas: React.FC<AnatomyCanvasProps> = ({
 
     return () => {
       isDisposed = true;
+      hdTriggerRef.current = null;
       cancelAnimationFrame(rafId);
       window.removeEventListener('resize', handleResize);
       controls.removeEventListener('start', handleControlStart);
@@ -995,9 +1265,14 @@ export const AnatomyCanvas: React.FC<AnatomyCanvasProps> = ({
       domEl.removeEventListener('dblclick', handleDoubleClick);
       controls.dispose();
       sculpted.dispose();
+      hdMaterialsToDispose.forEach((m) => m.dispose());
       Object.values(boneMaterialsById).forEach((m) => m.dispose());
       boneBaseMat.dispose();
       skinShellMat.dispose();
+      boneMicroTex.dispose();
+      organMicroTex.dispose();
+      envRenderTarget.dispose();
+      pmremGenerator.dispose();
       gridHelper.dispose();
       ringGeom.dispose();
       ringMat.dispose();
@@ -1007,6 +1282,30 @@ export const AnatomyCanvas: React.FC<AnatomyCanvasProps> = ({
       }
     };
   }, [onModelReady, onModelError]);
+
+  // On-demand streaming whenever user selects or isolates an HD-supported structure
+  useEffect(() => {
+    const targetId = isolatedPartId ?? selectedPartId;
+    if (targetId && HD_PART_CONFIGS[targetId]) {
+      void hdTriggerRef.current?.(targetId);
+    }
+  }, [selectedPartId, isolatedPartId]);
+
+  // Gentle batched async streaming when user clicks HD All preload in dock
+  useEffect(() => {
+    if (preloadAllHdTick <= 0) return;
+    let cancelled = false;
+    (async () => {
+      for (let i = 0; i < HD_PART_IDS.length; i += 2) {
+        if (cancelled || !hdTriggerRef.current) break;
+        const batch = HD_PART_IDS.slice(i, i + 2);
+        await Promise.all(batch.map((id) => hdTriggerRef.current?.(id)));
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [preloadAllHdTick]);
 
   const hoveredPart = hoveredId ? PARTS_BY_ID[hoveredId] : null;
   const pinList: PinScreenPos[] = ANATOMY_PARTS.filter(
