@@ -50,7 +50,7 @@ export const ChapterSections: React.FC<ChapterSectionsProps> = ({
             id={`chapter-sec-${ch.id}`}
             className="story-section"
           >
-            <article className="chapter-card spatial-glass">
+            <article className="chapter-card">
               {/* Top Row: Eyebrow + 1-Click Collapse Card Button */}
               <div
                 style={{
@@ -186,7 +186,7 @@ export const ChapterSections: React.FC<ChapterSectionsProps> = ({
               {/* Chapter 06: Cardiac Rate Simulator & Direct Index */}
               {isLab && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                  <div className="spatial-bento-card" style={{ padding: '10px 12px' }}>
+                  <div className="cardiac-sim-plain">
                     <div
                       style={{
                         display: 'flex',

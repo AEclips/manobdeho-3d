@@ -592,7 +592,7 @@ input[type='range'].spatial-range::-webkit-slider-thumb {
   outline: none;
 }
 
-/* VisionOS Frosted 3D Pins */
+/* Plain Floating Text 3D Pins (zero glass box so skeleton remains unobstructed) */
 .pins-overlay {
   position: fixed;
   inset: 0;
@@ -606,52 +606,73 @@ input[type='range'].spatial-range::-webkit-slider-thumb {
   pointer-events: auto;
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 4px 10px;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.13);
-  border: 1px solid rgba(255, 255, 255, 0.28);
-  color: #fff;
+  gap: 5px;
+  padding: 2px 4px;
+  border-radius: 0;
+  background: transparent;
+  border: none;
+  color: rgba(255, 255, 255, 0.96);
   font-family: var(--font-mono);
-  font-size: 10px;
-  font-weight: 600;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
   cursor: pointer;
   white-space: nowrap;
-  backdrop-filter: blur(18px) saturate(160%);
-  -webkit-backdrop-filter: blur(18px) saturate(160%);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.3),
-    0 6px 20px rgba(0, 0, 0, 0.45);
-  transition: opacity 0.2s ease, background-color 0.18s ease, border-color 0.18s ease;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  box-shadow: none;
+  text-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.98),
+    0 0 6px rgba(5, 9, 20, 0.98),
+    0 0 14px rgba(5, 9, 20, 0.9);
+  transition: opacity 0.2s ease, color 0.16s ease, transform 0.16s ease;
 }
 .anatomy-pin:hover,
 .anatomy-pin.selected {
-  background: rgba(56, 189, 248, 0.34);
-  border-color: rgba(255, 255, 255, 0.58);
+  background: transparent;
+  border: none;
+  color: var(--accent-sky);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  text-decoration-color: rgba(125, 211, 252, 0.85);
+  text-shadow:
+    0 1px 3px rgba(0, 0, 0, 0.98),
+    0 0 10px rgba(56, 189, 248, 0.55);
+  transform: translate(-50%, -50%) scale(1.05);
   z-index: 25;
 }
+.anatomy-pin:focus-visible {
+  outline: 1.5px solid var(--accent-sky);
+  outline-offset: 3px;
+  border-radius: 4px;
+}
 .pin-indicator {
-  width: 6.5px;
-  height: 6.5px;
+  width: 5.5px;
+  height: 5.5px;
   border-radius: 50%;
+  flex-shrink: 0;
 }
 
-/* Hover 3D Raycast Tooltip */
+/* Hover 3D Raycast Tooltip (plain floating text) */
 .raycast-tooltip {
   position: fixed;
   z-index: 75;
   pointer-events: none;
-  padding: 10px 14px;
-  border-radius: 16px;
-  background: rgba(15, 23, 42, 0.78);
-  backdrop-filter: blur(28px) saturate(180%);
-  -webkit-backdrop-filter: blur(28px) saturate(180%);
-  border: 1px solid rgba(255, 255, 255, 0.24);
-  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.5);
+  padding: 4px 6px;
+  border-radius: 0;
+  background: transparent;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  border: none;
+  box-shadow: none;
   max-width: 280px;
+  text-shadow:
+    0 1px 3px rgba(0, 0, 0, 0.98),
+    0 0 10px rgba(5, 9, 20, 0.98),
+    0 0 20px rgba(5, 9, 20, 0.9);
 }
 
-/* Slim Spatial Story Cards */
+/* Plain Editorial Story Text Overlays (zero glass blur over skeleton) */
 .story-main {
   position: relative;
   z-index: 10;
@@ -668,11 +689,27 @@ input[type='range'].spatial-range::-webkit-slider-thumb {
 }
 
 .chapter-card {
-  pointer-events: auto;
+  pointer-events: none;
   width: 100%;
   max-width: 392px;
-  border-radius: 28px;
-  padding: 22px 24px;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  padding: 8px 4px;
+  text-shadow:
+    0 1px 3px rgba(0, 0, 0, 0.98),
+    0 2px 12px rgba(5, 9, 20, 0.96),
+    0 0 22px rgba(5, 9, 20, 0.88);
+}
+
+.chapter-card button,
+.chapter-card input,
+.chapter-card select,
+.chapter-card .part-chip {
+  pointer-events: auto;
 }
 
 .chapter-eyebrow {
@@ -716,10 +753,11 @@ input[type='range'].spatial-range::-webkit-slider-thumb {
 }
 
 .metric-box {
-  padding: 8px 11px;
-  border-radius: 14px;
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.11);
+  padding: 2px 0 2px 9px;
+  border-radius: 0;
+  background: transparent;
+  border: none;
+  border-left: 2px solid rgba(125, 211, 252, 0.45);
 }
 
 .metric-label {
@@ -747,25 +785,48 @@ input[type='range'].spatial-range::-webkit-slider-thumb {
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  padding: 5px 9px;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.07);
-  border: 1px solid rgba(255, 255, 255, 0.16);
-  color: rgba(255, 255, 255, 0.9);
+  padding: 3px 8px 3px 0;
+  border-radius: 0;
+  background: transparent;
+  border: none;
+  color: rgba(255, 255, 255, 0.94);
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: 10.5px;
+  font-weight: 600;
   cursor: pointer;
-  transition: background-color 0.16s ease, border-color 0.16s ease, transform 0.16s ease;
+  text-shadow:
+    0 1px 3px rgba(0, 0, 0, 0.98),
+    0 0 10px rgba(5, 9, 20, 0.95);
+  transition: color 0.16s ease, transform 0.16s ease;
 }
 .part-chip:hover {
-  background: rgba(255, 255, 255, 0.16);
-  border-color: rgba(255, 255, 255, 0.35);
+  background: transparent;
+  color: var(--accent-sky);
+  text-decoration: underline;
+  text-underline-offset: 3px;
   transform: translateY(-1px);
 }
 .part-chip.selected {
-  background: rgba(125, 211, 252, 0.26);
-  border-color: rgba(125, 211, 252, 0.65);
-  color: #fff;
+  background: transparent;
+  color: var(--accent-sky);
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.part-chip:focus-visible {
+  outline: 1.5px solid var(--accent-sky);
+  outline-offset: 3px;
+  border-radius: 4px;
+}
+
+.cardiac-sim-plain {
+  padding: 8px 0;
+  background: transparent;
+  border-top: 1px solid rgba(255, 255, 255, 0.16);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.16);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
 }
 
 /* Right VisionOS Clinical Inspector Window */
@@ -1143,8 +1204,8 @@ dialog::backdrop {
   }
   .chapter-card {
     max-width: 100%;
-    padding: 15px;
-    border-radius: 22px;
+    padding: 6px 2px;
+    border-radius: 0;
   }
   .inspector-drawer {
     top: auto;
