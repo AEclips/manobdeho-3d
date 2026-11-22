@@ -4,6 +4,7 @@ import { AnatomyCanvas } from './components/AnatomyCanvas';
 import { AtlasSearchDialog } from './components/AtlasSearchDialog';
 import { ChapterSections } from './components/ChapterSections';
 import { ClinicalInspector } from './components/ClinicalInspector';
+import { OrnamentRail } from './components/OrnamentRail';
 import { TopHud } from './components/TopHud';
 import { ViewportDock } from './components/ViewportDock';
 import {
@@ -46,6 +47,7 @@ export const App: React.FC = () => {
   const [layerStates, setLayerStates] = useState<Record<SystemId, LayerState>>(
     buildInitialLayerStates
   );
+  const [layersOpen, setLayersOpen] = useState(false);
 
   const [selectedPartId, setSelectedPartId] = useState<string | null>(null);
   const [isolatedPartId, setIsolatedPartId] = useState<string | null>(null);
@@ -60,12 +62,16 @@ export const App: React.FC = () => {
   const [autoDissect, setAutoDissect] = useState(false);
   const [cameraPreset, setCameraPreset] = useState<CameraPreset>('default');
   const [cameraPresetTick, setCameraPresetTick] = useState(0);
-  const [zoomCommand, setZoomCommand] = useState<{ delta: number; tick: number } | null>(null);
+  const [zoomCommand, setZoomCommand] = useState<{ delta: number; tick: number } | null>(
+    null
+  );
   const [heartRateBpm, setHeartRateBpm] = useState(72);
   const [searchOpen, setSearchOpen] = useState(false);
 
   const progressBarRef = useRef<HTMLDivElement | null>(null);
-  const lastScrollYRef = useRef<number>(typeof window !== 'undefined' ? window.scrollY : 0);
+  const lastScrollYRef = useRef<number>(
+    typeof window !== 'undefined' ? window.scrollY : 0
+  );
 
   const getChapterForProgress = useCallback((p: number) => {
     for (let i = CHAPTERS.length - 1; i >= 0; i--) {
@@ -88,9 +94,7 @@ export const App: React.FC = () => {
       const maxScroll =
         document.documentElement.scrollHeight - window.innerHeight;
       const p =
-        maxScroll > 0
-          ? Math.max(0, Math.min(1, curY / maxScroll))
-          : 0;
+        maxScroll > 0 ? Math.max(0, Math.min(1, curY / maxScroll)) : 0;
 
       if (movedIntentionally) {
         setManualProgress(null);
@@ -115,7 +119,10 @@ export const App: React.FC = () => {
   const handleManualProgress = useCallback((val: number) => {
     setAutoDissect(false);
     setManualProgress(val);
-    if (progressBarRef.current && !CSS.supports('animation-timeline', 'scroll()')) {
+    if (
+      progressBarRef.current &&
+      !CSS.supports('animation-timeline', 'scroll()')
+    ) {
       progressBarRef.current.style.transform = `scaleX(${val})`;
     }
   }, []);
@@ -145,8 +152,7 @@ export const App: React.FC = () => {
 
   useEffect(() => {
     const onFsChange = () => {
-      const fsActive = Boolean(document.fullscreenElement);
-      setIsFullscreen(fsActive);
+      setIsFullscreen(Boolean(document.fullscreenElement));
     };
     document.addEventListener('fullscreenchange', onFsChange);
     return () => document.removeEventListener('fullscreenchange', onFsChange);
@@ -161,7 +167,6 @@ export const App: React.FC = () => {
         await document.exitFullscreen();
       }
     } catch {
-      // Graceful fallback when headless/restricted iframe blocks requestFullscreen
       setCinemaMode((v) => !v);
     }
   }, []);
@@ -179,11 +184,18 @@ export const App: React.FC = () => {
   const handleSelectChapter = useCallback((idx: number) => {
     setManualProgress(null);
     setIsolatedPartId(null);
+    setCameraPreset('default');
+    if (cinemaMode) {
+      const targetProgress = CHAPTERS[idx]?.range[0] ?? 0;
+      setManualProgress(targetProgress + 0.04);
+      setActiveChapter(idx);
+      return;
+    }
     const el = document.getElementById(`chapter-sec-${idx}`);
     if (el) {
       el.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
-  }, []);
+  }, [cinemaMode]);
 
   const ensureSystemActive = useCallback((partId: string) => {
     const part = PARTS_BY_ID[partId];
@@ -219,7 +231,6 @@ export const App: React.FC = () => {
   const handleChangeDissectionMode = useCallback((mode: DissectionMode) => {
     setDissectionMode(mode);
     if (mode === 'peel') {
-      // Reveal all 6 layers during Layer-by-Layer Lateral Peel so user sees full stack
       setLayerStates((prev) => ({
         ...prev,
         skeletal: { ...prev.skeletal, active: true },
@@ -230,6 +241,12 @@ export const App: React.FC = () => {
         skin: { ...prev.skin, active: true },
       }));
     }
+  }, []);
+
+  const handleCycleImagingMode = useCallback(() => {
+    setImagingMode((m) =>
+      m === 'realistic' ? 'xray' : m === 'xray' ? 'neurovascular' : 'realistic'
+    );
   }, []);
 
   const handleToggleLayer = useCallback((id: SystemId) => {
@@ -292,15 +309,21 @@ export const App: React.FC = () => {
         setCinemaMode((v) => !v);
       } else if (e.key.toLowerCase() === 'f') {
         handleToggleFullscreen();
+      } else if (e.key.toLowerCase() === 'l') {
+        setLayersOpen((v) => !v);
       } else if (e.key.toLowerCase() === 'x') {
-        setImagingMode((m) =>
-          m === 'realistic' ? 'xray' : m === 'xray' ? 'neurovascular' : 'realistic'
-        );
+        handleCycleImagingMode();
       }
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [handleSelectChapter, handleToggleFullscreen, isolatedPartId, searchOpen]);
+  }, [
+    handleCycleImagingMode,
+    handleSelectChapter,
+    handleToggleFullscreen,
+    isolatedPartId,
+    searchOpen,
+  ]);
 
   const handleModelReady = useCallback((count: number) => {
     setModelLoadedCount(count);
@@ -314,8 +337,11 @@ export const App: React.FC = () => {
 
   return (
     <>
-      {/* Native CSS Scroll-Driven Top Progress Bar */}
+      {/* Native Scroll-Driven Top Progress Bar */}
       <div id="scroll-progress" ref={progressBarRef} aria-hidden="true" />
+
+      {/* Soft Studio Ambient Halo Backdrop for VisionOS Glass Refraction */}
+      <div className="ambient-studio-halo" aria-hidden="true" />
 
       {/* Initial Loading / Error Overlay */}
       {modelLoadedCount === null && (
@@ -324,7 +350,7 @@ export const App: React.FC = () => {
             position: 'fixed',
             inset: 0,
             zIndex: 200,
-            background: '#040814',
+            background: '#050914',
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',
@@ -336,7 +362,7 @@ export const App: React.FC = () => {
         >
           {modelError ? (
             <>
-              <div style={{ color: '#f43f5e', fontWeight: 700, fontSize: '18px' }}>
+              <div style={{ color: '#fb7185', fontWeight: 700, fontSize: '18px' }}>
                 3D Anatomy Engine Error
               </div>
               <div style={{ color: '#94a3b8', fontSize: '13px', maxWidth: '420px' }}>
@@ -350,8 +376,8 @@ export const App: React.FC = () => {
                   width: '54px',
                   height: '54px',
                   borderRadius: '50%',
-                  border: '3px solid rgba(56,189,248,0.18)',
-                  borderTopColor: '#38bdf8',
+                  border: '3px solid rgba(125,211,252,0.2)',
+                  borderTopColor: '#7dd3fc',
                   animation: 'spin 0.9s linear infinite',
                 }}
               />
@@ -366,7 +392,7 @@ export const App: React.FC = () => {
               >
                 মানবদেহ ৩ডি // MANOBDEHO 3D
               </div>
-              <div style={{ fontSize: '13px', color: '#94a3b8' }}>
+              <div style={{ fontSize: '13px', color: 'rgba(255,255,255,0.65)' }}>
                 রিয়েল ৩ডি কঙ্কাল, অভ্যন্তরীণ অঙ্গ, পেশী ও স্নায়ুতন্ত্র লোড হচ্ছে...
               </div>
             </>
@@ -399,83 +425,71 @@ export const App: React.FC = () => {
         onModelError={handleModelError}
       />
 
-      {/* Persistent Top Clinical HUD */}
+      {/* Top Minimal VisionOS Frosted Status Pill */}
       <TopHud
         scrollProgress={effectiveProgress}
         activeChapter={activeChapter}
-        dissectionMode={dissectionMode}
-        imagingMode={imagingMode}
-        layerStates={layerStates}
-        freeOrbit={freeOrbit}
-        showPins={showPins}
         isPlaying={isPlaying}
-        cinemaMode={cinemaMode}
         isFullscreen={isFullscreen}
         heartRateBpm={heartRateBpm}
-        onSelectChapter={(idx) => {
-          setCinemaMode(false);
-          setCameraPreset('default');
-          handleSelectChapter(idx);
-        }}
-        onChangeDissectionMode={handleChangeDissectionMode}
-        onChangeImagingMode={setImagingMode}
-        onToggleLayer={handleToggleLayer}
-        onSoloLayer={handleSoloLayer}
-        onChangeLayerOpacity={handleChangeLayerOpacity}
-        onResetLayers={handleResetLayers}
-        onToggleOrbit={() => setFreeOrbit((v) => !v)}
-        onTogglePins={() => setShowPins((v) => !v)}
-        onTogglePlay={() => setIsPlaying((v) => !v)}
-        onToggleCinema={() => setCinemaMode((v) => !v)}
         onToggleFullscreen={handleToggleFullscreen}
         onOpenSearch={() => setSearchOpen(true)}
       />
 
-      {/* Scrollytelling Narrative Chapters (hidden in Pure 3D Cinema Mode) */}
+      {/* Left Floating Vertical VisionOS Ornament Rail + Layers Popover */}
+      <OrnamentRail
+        activeChapter={activeChapter}
+        cinemaMode={cinemaMode}
+        layersOpen={layersOpen}
+        layerStates={layerStates}
+        onSelectChapter={handleSelectChapter}
+        onToggleCinema={() => setCinemaMode((v) => !v)}
+        onToggleLayersOpen={() => setLayersOpen((v) => !v)}
+        onToggleLayer={handleToggleLayer}
+        onSoloLayer={handleSoloLayer}
+        onChangeLayerOpacity={handleChangeLayerOpacity}
+        onResetLayers={handleResetLayers}
+      />
+
+      {/* Slim Collapsible Frosted Story Cards */}
       {!cinemaMode && (
         <ChapterSections
-          scrollProgress={effectiveProgress}
           selectedPartId={selectedPartId}
-          dissectionMode={dissectionMode}
-          layerStates={layerStates}
-          freeOrbit={freeOrbit}
-          autoSpin={autoSpin}
           heartRateBpm={heartRateBpm}
           onSelectChapter={handleSelectChapter}
           onSelectPart={(id) => handleSelectPart(id)}
           onIsolatePart={handleIsolatePart}
-          onManualProgress={handleManualProgress}
-          onChangeDissectionMode={handleChangeDissectionMode}
-          onToggleLayer={handleToggleLayer}
-          onToggleOrbit={() => setFreeOrbit((v) => !v)}
-          onToggleAutoSpin={() => setAutoSpin((v) => !v)}
           onChangeHeartRate={setHeartRateBpm}
+          onHideCard={() => setCinemaMode(true)}
           onOpenSearch={() => setSearchOpen(true)}
         />
       )}
 
-      {/* Floating 3D Workstation Dock in Pure 3D Cinema / Fullscreen Mode */}
-      {cinemaMode && (
-        <ViewportDock
-          dissectionProgress={effectiveProgress}
-          dissectionMode={dissectionMode}
-          autoDissect={autoDissect}
-          autoSpin={autoSpin}
-          cameraPreset={cameraPreset}
-          isFullscreen={isFullscreen}
-          hasDrawerOpen={Boolean(selectedPartId)}
-          onManualProgress={handleManualProgress}
-          onToggleAutoDissect={() => setAutoDissect((v) => !v)}
-          onChangeDissectionMode={handleChangeDissectionMode}
-          onSelectPreset={handleSelectPreset}
-          onZoom={handleZoom}
-          onToggleAutoSpin={() => setAutoSpin((v) => !v)}
-          onExitCinema={() => setCinemaMode(false)}
-          onToggleFullscreen={handleToggleFullscreen}
-        />
-      )}
+      {/* Persistent Bottom VisionOS Spatial Control Bar */}
+      <ViewportDock
+        dissectionProgress={effectiveProgress}
+        dissectionMode={dissectionMode}
+        imagingMode={imagingMode}
+        autoDissect={autoDissect}
+        freeOrbit={freeOrbit}
+        autoSpin={autoSpin}
+        showPins={showPins}
+        isPlaying={isPlaying}
+        cameraPreset={cameraPreset}
+        hasDrawerOpen={Boolean(selectedPartId)}
+        onManualProgress={handleManualProgress}
+        onToggleAutoDissect={() => setAutoDissect((v) => !v)}
+        onChangeDissectionMode={handleChangeDissectionMode}
+        onCycleImagingMode={handleCycleImagingMode}
+        onSelectPreset={handleSelectPreset}
+        onZoom={handleZoom}
+        onToggleOrbit={() => setFreeOrbit((v) => !v)}
+        onToggleAutoSpin={() => setAutoSpin((v) => !v)}
+        onTogglePins={() => setShowPins((v) => !v)}
+        onTogglePlay={() => setIsPlaying((v) => !v)}
+      />
 
-      {/* Right Clinical Profile Inspector Drawer */}
+      {/* Right VisionOS Clinical Profile Inspector Window */}
       <ClinicalInspector
         partId={selectedPartId}
         isolatedPartId={isolatedPartId}
@@ -495,37 +509,29 @@ export const App: React.FC = () => {
         onToggleGhostContext={() => setIsolationGhostContext((v) => !v)}
       />
 
-      {/* Bottom 360° Isolation Mode Controls Pill */}
+      {/* Floating 360° Isolation Pill Banner */}
       {isolatedPart && (
         <div
-          className={`isolation-banner glass-panel ${
+          className={`isolation-banner spatial-glass ${
             selectedPartId ? 'with-drawer' : ''
-          } ${cinemaMode ? 'above-dock' : ''}`}
+          }`}
         >
-          <Focus size={15} color="#2dd4bf" />
+          <Focus size={14} color="#5eead4" />
           <span
             style={{
               fontFamily: 'var(--font-mono)',
-              fontSize: '11.5px',
+              fontSize: '11px',
               fontWeight: 700,
               color: '#fff',
+              whiteSpace: 'nowrap',
             }}
           >
             360° ISOLATION: {isolatedPart.shortLabel}
           </span>
-          <span
-            style={{
-              fontFamily: 'var(--font-mono)',
-              fontSize: '10px',
-              color: '#94a3b8',
-            }}
-          >
-            Drag to rotate • Scroll to zoom
-          </span>
           <button
             type="button"
-            className="tool-btn active"
-            style={{ padding: '4px 9px' }}
+            className="spatial-pill-btn active"
+            style={{ padding: '4px 9px', fontSize: '10.5px' }}
             onClick={() => setIsolationGhostContext((v) => !v)}
           >
             {isolationGhostContext ? <Eye size={12} /> : <EyeOff size={12} />}
@@ -533,8 +539,14 @@ export const App: React.FC = () => {
           </button>
           <button
             type="button"
-            className="tool-btn warn-active"
-            style={{ padding: '4px 10px' }}
+            className="spatial-pill-btn"
+            style={{
+              padding: '4px 10px',
+              fontSize: '10.5px',
+              background: 'rgba(251, 113, 133, 0.25)',
+              borderColor: 'rgba(251, 113, 133, 0.5)',
+              color: '#ffe4e6',
+            }}
             onClick={() => setIsolatedPartId(null)}
           >
             <X size={12} />

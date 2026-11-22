@@ -209,8 +209,7 @@ export const AtlasSearchDialog: React.FC<AtlasSearchDialogProps> = ({
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
           <button
             type="button"
-            className={`chapter-pill ${filterSys === 'all' ? 'active' : ''}`}
-            style={{ border: '1px solid rgba(148,163,184,0.18)' }}
+            className={`spatial-pill-btn ${filterSys === 'all' ? 'active' : ''}`}
             onClick={() => setFilterSys('all')}
           >
             All ({ANATOMY_PARTS.length})
@@ -219,8 +218,7 @@ export const AtlasSearchDialog: React.FC<AtlasSearchDialogProps> = ({
             <button
               key={sys.id}
               type="button"
-              className={`chapter-pill ${filterSys === sys.id ? 'active' : ''}`}
-              style={{ border: '1px solid rgba(148,163,184,0.18)' }}
+              className={`spatial-pill-btn ${filterSys === sys.id ? 'active' : ''}`}
               onClick={() => setFilterSys(sys.id)}
             >
               {sys.nameEn.split(' ')[0]}
@@ -326,8 +324,8 @@ export const AtlasSearchDialog: React.FC<AtlasSearchDialogProps> = ({
 
                 <button
                   type="button"
-                  className="btn-clinical"
-                  style={{ padding: '7px 11px', fontSize: '11px' }}
+                  className="spatial-cta-btn"
+                  style={{ padding: '7px 12px', fontSize: '11px' }}
                   onClick={() => handlePick(part.id, true)}
                   title="Zoom and isolate in 360°"
                 >

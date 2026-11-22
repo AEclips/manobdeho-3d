@@ -1,208 +1,228 @@
 import React from 'react';
 import {
-  Eye,
-  Maximize,
-  Minimize,
+  Orbit,
   Pause,
   Play,
   RotateCcw,
   RotateCw,
+  Scan,
+  Split,
+  Tag,
   ZoomIn,
   ZoomOut,
 } from 'lucide-react';
-import { CameraPreset, DissectionMode } from '../types/anatomy';
+import { CameraPreset, DissectionMode, ImagingMode } from '../types/anatomy';
 
 interface ViewportDockProps {
   dissectionProgress: number;
   dissectionMode: DissectionMode;
+  imagingMode: ImagingMode;
   autoDissect: boolean;
+  freeOrbit: boolean;
   autoSpin: boolean;
+  showPins: boolean;
+  isPlaying: boolean;
   cameraPreset: CameraPreset;
-  isFullscreen: boolean;
   hasDrawerOpen: boolean;
   onManualProgress: (val: number) => void;
   onToggleAutoDissect: () => void;
   onChangeDissectionMode: (mode: DissectionMode) => void;
+  onCycleImagingMode: () => void;
   onSelectPreset: (preset: CameraPreset) => void;
   onZoom: (delta: number) => void;
+  onToggleOrbit: () => void;
   onToggleAutoSpin: () => void;
-  onExitCinema: () => void;
-  onToggleFullscreen: () => void;
+  onTogglePins: () => void;
+  onTogglePlay: () => void;
 }
 
 const PRESETS: Array<{ id: CameraPreset; label: string }> = [
-  { id: 'anterior', label: 'Anterior' },
-  { id: 'posterior', label: 'Posterior' },
-  { id: 'left', label: 'Left' },
-  { id: 'right', label: 'Right' },
+  { id: 'anterior', label: 'Ant' },
+  { id: 'posterior', label: 'Post' },
+  { id: 'left', label: 'L' },
+  { id: 'right', label: 'R' },
   { id: 'superior', label: 'Top' },
 ];
 
 export const ViewportDock: React.FC<ViewportDockProps> = ({
   dissectionProgress,
   dissectionMode,
+  imagingMode,
   autoDissect,
+  freeOrbit,
   autoSpin,
+  showPins,
+  isPlaying,
   cameraPreset,
-  isFullscreen,
   hasDrawerOpen,
   onManualProgress,
   onToggleAutoDissect,
   onChangeDissectionMode,
+  onCycleImagingMode,
   onSelectPreset,
   onZoom,
+  onToggleOrbit,
   onToggleAutoSpin,
-  onExitCinema,
-  onToggleFullscreen,
+  onTogglePins,
+  onTogglePlay,
 }) => {
+  const imagingLabel =
+    imagingMode === 'realistic'
+      ? 'PBR'
+      : imagingMode === 'xray'
+        ? 'X-Ray'
+        : 'Neuro-V';
+
   return (
     <div
-      className={`viewport-dock glass-panel ${hasDrawerOpen ? 'with-drawer' : ''}`}
+      className={`spatial-dock-wrap ${hasDrawerOpen ? 'with-drawer' : ''}`}
       role="region"
-      aria-label="3D Workstation Controls"
+      aria-label="Spatial 3D Control Bar"
     >
-      {/* Top Row: Dissection Scrubber + Auto-Dissect + Mode */}
-      <div className="dock-row">
-        <button
-          type="button"
-          className={`tool-btn ${autoDissect ? 'active' : ''}`}
-          onClick={onToggleAutoDissect}
-          aria-label={autoDissect ? 'Stop auto-dissect sweep' : 'Play auto-dissect sweep'}
-          style={{
-            border: '1px solid rgba(56,189,248,0.35)',
-            padding: '5px 10px',
-          }}
-        >
-          {autoDissect ? <Pause size={12} /> : <Play size={12} />}
-          <span>{autoDissect ? 'Stop' : 'Auto-Dissect'}</span>
-        </button>
-
-        <div className="dock-scrubber">
-          <span
-            style={{
-              fontFamily: 'var(--font-mono)',
-              fontSize: '10px',
-              color: '#94a3b8',
-              whiteSpace: 'nowrap',
-            }}
+      <div className="spatial-dock spatial-glass">
+        <div className="spatial-dock-row">
+          <button
+            type="button"
+            className={`spatial-pill-btn ${autoDissect ? 'active' : ''}`}
+            onClick={onToggleAutoDissect}
+            aria-label={autoDissect ? 'Stop auto-dissect sweep' : 'Play auto-dissect sweep'}
           >
-            DISSECT
-          </span>
-          <input
-            type="range"
-            className="clinical-range"
-            aria-label="Dissection explosion percentage"
-            min={0}
-            max={1}
-            step={0.005}
-            value={dissectionProgress}
-            onChange={(e) => onManualProgress(parseFloat(e.target.value))}
-          />
-          <span
-            style={{
-              fontFamily: 'var(--font-mono)',
-              fontSize: '11px',
-              fontWeight: 700,
-              color: '#38bdf8',
-              minWidth: '34px',
-              textAlign: 'right',
-            }}
-          >
-            {Math.round(dissectionProgress * 100)}%
-          </span>
-        </div>
+            {autoDissect ? <Pause size={12} /> : <Play size={12} />}
+            <span>{autoDissect ? 'Stop' : 'Dissect'}</span>
+          </button>
 
-        <button
-          type="button"
-          className={`tool-btn ${dissectionMode === 'peel' ? 'active' : ''}`}
-          style={{ border: '1px solid rgba(148,163,184,0.2)' }}
-          onClick={() =>
-            onChangeDissectionMode(dissectionMode === 'regional' ? 'peel' : 'regional')
-          }
-        >
-          <span>{dissectionMode === 'peel' ? 'Peel' : 'Regional'}</span>
-        </button>
-      </div>
+          <div className="spatial-scrubber">
+            <input
+              type="range"
+              className="spatial-range"
+              aria-label="Dissection explosion percentage"
+              min={0}
+              max={1}
+              step={0.005}
+              value={dissectionProgress}
+              onChange={(e) => onManualProgress(parseFloat(e.target.value))}
+            />
+            <span className="spatial-scrubber-val">
+              {Math.round(dissectionProgress * 100)}%
+            </span>
+          </div>
 
-      {/* Bottom Row: Anatomical Camera Angle Presets + Zoom + Spin + Exit/Fullscreen */}
-      <div className="dock-row">
-        <div style={{ display: 'flex', alignItems: 'center', gap: '3px', flexWrap: 'wrap' }}>
-          {PRESETS.map((p) => (
+          <div className="spatial-seg-group">
             <button
-              key={p.id}
               type="button"
-              className={`chapter-pill ${cameraPreset === p.id ? 'active' : ''}`}
-              style={{ border: '1px solid rgba(148,163,184,0.16)' }}
-              onClick={() => onSelectPreset(p.id)}
+              className={`spatial-pill-btn ${dissectionMode === 'peel' ? 'active' : ''}`}
+              onClick={() =>
+                onChangeDissectionMode(dissectionMode === 'regional' ? 'peel' : 'regional')
+              }
+              title="Toggle Regional Explosion vs Layer-by-Layer Lateral Peel"
             >
-              {p.label}
+              <Split size={12} />
+              <span>{dissectionMode === 'peel' ? 'Peel' : 'Regional'}</span>
             </button>
-          ))}
-          <button
-            type="button"
-            className="tool-btn"
-            style={{ border: '1px solid rgba(148,163,184,0.18)', padding: '4px 8px' }}
-            onClick={() => onSelectPreset('default')}
-            title="Reset camera angle"
-            aria-label="Reset camera angle"
-          >
-            <RotateCcw size={12} />
-          </button>
+
+            <button
+              type="button"
+              className={`spatial-pill-btn ${imagingMode !== 'realistic' ? 'active' : ''}`}
+              onClick={onCycleImagingMode}
+              title="Cycle Imaging Mode: PBR / X-Ray / Neuro-Vascular (X)"
+            >
+              <Scan size={12} />
+              <span>{imagingLabel}</span>
+            </button>
+          </div>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-          <button
-            type="button"
-            className="tool-btn"
-            style={{ border: '1px solid rgba(148,163,184,0.18)', padding: '5px 7px' }}
-            onClick={() => onZoom(1)}
-            aria-label="Zoom in"
-            title="Zoom in"
-          >
-            <ZoomIn size={13} />
-          </button>
-          <button
-            type="button"
-            className="tool-btn"
-            style={{ border: '1px solid rgba(148,163,184,0.18)', padding: '5px 7px' }}
-            onClick={() => onZoom(-1)}
-            aria-label="Zoom out"
-            title="Zoom out"
-          >
-            <ZoomOut size={13} />
-          </button>
-          <button
-            type="button"
-            className={`tool-btn ${autoSpin ? 'active' : ''}`}
-            style={{ border: '1px solid rgba(148,163,184,0.18)', padding: '5px 8px' }}
-            onClick={onToggleAutoSpin}
-            title="Toggle 360° Auto-Spin"
-          >
-            <RotateCw size={12} />
-            <span>Spin</span>
-          </button>
-          <button
-            type="button"
-            className="tool-btn"
-            style={{ border: '1px solid rgba(148,163,184,0.18)', padding: '5px 8px' }}
-            onClick={onExitCinema}
-            title="Show story chapter cards (H)"
-          >
-            <Eye size={12} />
-            <span>Cards</span>
-          </button>
-          <button
-            type="button"
-            className={`tool-btn ${isFullscreen ? 'active' : ''}`}
-            style={{ border: '1px solid rgba(56,189,248,0.35)', padding: '5px 8px' }}
-            onClick={onToggleFullscreen}
-            title="Toggle Browser Fullscreen (F)"
-          >
-            {isFullscreen ? <Minimize size={12} /> : <Maximize size={12} />}
-            <span>{isFullscreen ? 'Exit Full' : 'Fullscreen'}</span>
-          </button>
+        <div className="spatial-dock-row">
+          <div className="spatial-seg-group">
+            {PRESETS.map((p) => (
+              <button
+                key={p.id}
+                type="button"
+                className={`spatial-preset-btn ${cameraPreset === p.id ? 'active' : ''}`}
+                onClick={() => onSelectPreset(p.id)}
+              >
+                {p.label}
+              </button>
+            ))}
+            <button
+              type="button"
+              className="spatial-preset-btn"
+              onClick={() => onSelectPreset('default')}
+              title="Reset camera angle"
+              aria-label="Reset camera angle"
+            >
+              <RotateCcw size={11} />
+            </button>
+          </div>
+
+          <div className="spatial-seg-group">
+            <button
+              type="button"
+              className="spatial-preset-btn"
+              onClick={() => onZoom(1)}
+              aria-label="Zoom in"
+              title="Zoom in"
+            >
+              <ZoomIn size={12} />
+            </button>
+            <button
+              type="button"
+              className="spatial-preset-btn"
+              onClick={() => onZoom(-1)}
+              aria-label="Zoom out"
+              title="Zoom out"
+            >
+              <ZoomOut size={12} />
+            </button>
+            <button
+              type="button"
+              className={`spatial-preset-btn ${freeOrbit ? 'active' : ''}`}
+              onClick={onToggleOrbit}
+              title="Toggle Free 360° Orbit (O)"
+              aria-label="Toggle Free 360° Orbit"
+            >
+              <Orbit size={12} />
+            </button>
+            <button
+              type="button"
+              className={`spatial-preset-btn ${autoSpin ? 'active' : ''}`}
+              onClick={onToggleAutoSpin}
+              title="Toggle 360° Auto-Spin"
+              aria-label="Toggle 360° Auto-Spin"
+            >
+              <RotateCw size={12} />
+            </button>
+            <button
+              type="button"
+              className={`spatial-preset-btn ${showPins ? 'active' : ''}`}
+              onClick={onTogglePins}
+              title="Toggle 3D Callout Pins (P)"
+              aria-label="Toggle 3D Callout Pins"
+            >
+              <Tag size={12} />
+            </button>
+            <button
+              type="button"
+              className={`spatial-preset-btn ${!isPlaying ? 'warn' : ''}`}
+              onClick={onTogglePlay}
+              aria-label={
+                isPlaying
+                  ? 'Pause physiological pulse animations'
+                  : 'Play physiological pulse animations'
+              }
+              title={
+                isPlaying
+                  ? 'Pause Heartbeat & Respiration'
+                  : 'Resume Heartbeat & Respiration'
+              }
+            >
+              {isPlaying ? <Pause size={12} /> : <Play size={12} />}
+            </button>
+          </div>
         </div>
       </div>
+
+      <div className="spatial-window-bar" aria-hidden="true" />
     </div>
   );
 };

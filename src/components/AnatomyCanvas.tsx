@@ -139,7 +139,7 @@ export const AnatomyCanvas: React.FC<AnatomyCanvasProps> = ({
 
     /* -------------------- 1. RENDERER, SCENE, CAMERA -------------------- */
     const scene = new THREE.Scene();
-    scene.fog = new THREE.FogExp2(0x040814, 0.032);
+    scene.fog = new THREE.FogExp2(0x060b16, 0.018);
 
     const camera = new THREE.PerspectiveCamera(
       42,
@@ -219,7 +219,7 @@ export const AnatomyCanvas: React.FC<AnatomyCanvasProps> = ({
     const anatomicalRoot = new THREE.Group();
     anatomicalRoot.scale.set(0.02, 0.02, 0.02);
     const initialHeroX =
-      window.innerWidth >= 1024 ? 0.62 : window.innerWidth >= 768 ? 0.35 : 0;
+      window.innerWidth >= 1024 ? 0.42 : window.innerWidth >= 768 ? 0.25 : 0;
     anatomicalRoot.position.set(initialHeroX, -1.86, 0);
     scene.add(anatomicalRoot);
 
@@ -746,7 +746,7 @@ export const AnatomyCanvas: React.FC<AnatomyCanvasProps> = ({
 
       /* --- D. Camera Choreography, Presets & 360° Part Isolation Focus --- */
       const isDesktop = window.innerWidth >= 1024;
-      const rightSpaceShift = isDesktop ? 0.62 : window.innerWidth >= 768 ? 0.35 : 0;
+      const rightSpaceShift = isDesktop ? 0.42 : window.innerWidth >= 768 ? 0.25 : 0;
       const rootTargetX =
         state.isolatedPartId || state.selectedPartId || state.cinemaMode
           ? 0
@@ -942,7 +942,7 @@ export const AnatomyCanvas: React.FC<AnatomyCanvasProps> = ({
             const sx = (projV3.x * 0.5 + 0.5) * w;
             const sy = (-projV3.y * 0.5 + 0.5) * h;
 
-            if (sx < 24 || sx > w - 24 || sy < 68 || sy > h - 32) {
+            if (sx < 24 || sx > w - 24 || sy < 72 || sy > h - 122) {
               el.style.display = 'none';
               continue;
             }
@@ -958,7 +958,7 @@ export const AnatomyCanvas: React.FC<AnatomyCanvasProps> = ({
               for (let j = 0; j < i; j++) {
                 const prev = visiblePins[j];
                 if (Math.abs(cur.sx - prev.sx) < 92 && Math.abs(cur.sy - prev.sy) < 28) {
-                  cur.sy = Math.min(h - 36, prev.sy + 29);
+                  cur.sy = Math.min(h - 124, prev.sy + 29);
                 }
               }
             }
