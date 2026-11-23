@@ -10,6 +10,17 @@ export type DissectionMode = 'regional' | 'peel';
 
 export type ImagingMode = 'realistic' | 'xray' | 'neurovascular';
 
+export type SliceAxis = 'axial' | 'sagittal' | 'coronal';
+
+export interface SliceConfig {
+  enabled: boolean;
+  axis: SliceAxis;
+  /** Normalized plane depth in [0.02, 0.98] across active scene bounds */
+  position: number;
+  invert: boolean;
+  showPlaneHelper: boolean;
+}
+
 export type CameraPreset =
   | 'default'
   | 'anterior'

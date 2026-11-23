@@ -1050,7 +1050,7 @@ input[type='range'].spatial-range::-webkit-slider-thumb {
   transform: translateX(-50%);
   z-index: 60;
   pointer-events: none;
-  width: min(650px, calc(100vw - 110px));
+  width: min(685px, calc(100vw - 110px));
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -1060,7 +1060,7 @@ input[type='range'].spatial-range::-webkit-slider-thumb {
 @media (min-width: 1080px) {
   .spatial-dock-wrap.with-drawer {
     left: calc((100vw - 434px) / 2);
-    width: min(610px, calc(100vw - 530px));
+    width: min(645px, calc(100vw - 530px));
   }
 }
 
@@ -1080,6 +1080,15 @@ input[type='range'].spatial-range::-webkit-slider-thumb {
   justify-content: space-between;
   gap: 8px;
   flex-wrap: wrap;
+}
+
+.spatial-slice-row {
+  padding-bottom: 6px;
+  border-bottom: 1px solid rgba(56, 189, 248, 0.24);
+}
+
+.spatial-slice-scrubber {
+  min-width: 112px;
 }
 
 .spatial-scrubber {
@@ -1109,6 +1118,7 @@ input[type='range'].spatial-range::-webkit-slider-thumb {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  gap: 4px;
   min-width: 28px;
   height: 26px;
   padding: 0 8px;
@@ -1166,6 +1176,10 @@ input[type='range'].spatial-range::-webkit-slider-thumb {
   .isolation-banner.with-drawer {
     left: calc((100vw - 434px) / 2);
   }
+}
+
+body:has(.spatial-slice-row) .isolation-banner {
+  bottom: 146px;
 }
 
 /* Native <dialog> Atlas Search Modal */
@@ -1230,6 +1244,9 @@ dialog::backdrop {
     padding: 64px 12px 118px 54px;
     align-items: flex-end;
   }
+  body:has(.spatial-slice-row) .story-section {
+    padding-bottom: 158px;
+  }
   .chapter-card {
     max-width: 100%;
     padding: 6px 2px;
@@ -1264,5 +1281,23 @@ dialog::backdrop {
   }
   .spatial-scrubber {
     min-width: 95px;
+  }
+  .spatial-slice-row {
+    gap: 4px;
+  }
+  .spatial-slice-row .spatial-preset-btn {
+    min-width: 22px;
+    height: 23px;
+    padding: 0 5px;
+    font-size: 9px;
+    gap: 2px;
+  }
+  .spatial-slice-row .spatial-scrubber {
+    min-width: 54px;
+    gap: 4px;
+  }
+  .spatial-slice-row .spatial-scrubber-val {
+    min-width: 26px;
+    font-size: 9.5px;
   }
 }

@@ -25,6 +25,7 @@ import {
   CameraPreset,
   DissectionMode,
   ImagingMode,
+  SliceConfig,
   SystemId,
 } from '../types/anatomy';
 
@@ -48,6 +49,7 @@ interface AnatomyCanvasProps {
   isPlaying: boolean;
   cinemaMode: boolean;
   heartRateBpm: number;
+  sliceConfig: SliceConfig;
   cameraPreset: CameraPreset;
   cameraPresetTick: number;
   zoomCommand: { delta: number; tick: number } | null;
@@ -82,6 +84,7 @@ export const AnatomyCanvas: React.FC<AnatomyCanvasProps> = ({
   isPlaying,
   cinemaMode,
   heartRateBpm,
+  sliceConfig,
   cameraPreset,
   cameraPresetTick,
   zoomCommand,
@@ -122,6 +125,7 @@ export const AnatomyCanvas: React.FC<AnatomyCanvasProps> = ({
     isPlaying,
     cinemaMode,
     heartRateBpm,
+    sliceConfig,
     cameraPreset,
     cameraPresetTick,
     zoomCommand,
@@ -145,6 +149,7 @@ export const AnatomyCanvas: React.FC<AnatomyCanvasProps> = ({
     isPlaying,
     cinemaMode,
     heartRateBpm,
+    sliceConfig,
     cameraPreset,
     cameraPresetTick,
     zoomCommand,
@@ -181,6 +186,7 @@ export const AnatomyCanvas: React.FC<AnatomyCanvasProps> = ({
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    renderer.localClippingEnabled = true;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
     renderer.toneMappingExposure = 1.18;
     container.appendChild(renderer.domElement);
@@ -258,6 +264,45 @@ export const AnatomyCanvas: React.FC<AnatomyCanvasProps> = ({
     anatomicalRoot.position.set(initialHeroX, -1.86, 0);
     scene.add(anatomicalRoot);
 
+    /* -------------------- REAL-TIME MRI CROSS-SECTION CLIPPING -------------------- */
+    const clipPlane = new THREE.Plane(new THREE.Vector3(0, 0, -1), 0);
+    const localPlane = new THREE.Plane(new THREE.Vector3(0, 0, -1), 0);
+    const applyClipState = (mat: THREE.Material, enabled: boolean) => {
+      const currentlyEnabled = Boolean(mat.clippingPlanes && mat.clippingPlanes.length > 0);
+      if (currentlyEnabled !== enabled) {
+        mat.clippingPlanes = enabled ? [clipPlane] : null;
+        mat.clipShadows = enabled;
+        mat.needsUpdate = true;
+      }
+    };
+
+    const sliceHelperGroup = new THREE.Group();
+    const sliceFillGeom = new THREE.PlaneGeometry(1, 1);
+    const sliceFillMat = new THREE.MeshBasicMaterial({
+      color: 0x22d3ee,
+      transparent: true,
+      opacity: 0.08,
+      depthWrite: false,
+      side: THREE.DoubleSide,
+    });
+    const sliceFillMesh = new THREE.Mesh(sliceFillGeom, sliceFillMat);
+    const sliceEdgeGeom = new THREE.EdgesGeometry(sliceFillGeom);
+    const sliceEdgeMat = new THREE.LineBasicMaterial({
+      color: 0x38bdf8,
+      transparent: true,
+      opacity: 0.72,
+    });
+    const sliceEdgeLines = new THREE.LineSegments(sliceEdgeGeom, sliceEdgeMat);
+    sliceHelperGroup.add(sliceFillMesh);
+    sliceHelperGroup.add(sliceEdgeLines);
+    sliceHelperGroup.visible = false;
+    anatomicalRoot.add(sliceHelperGroup);
+
+    const bodyLocalBox = new THREE.Box3(
+      new THREE.Vector3(-36, 2, -16),
+      new THREE.Vector3(36, 176, 16)
+    );
+
     const boneBaseMat = new THREE.MeshPhysicalMaterial({
       color: 0xf1ebe0,
       roughness: 0.42,
@@ -268,6 +313,7 @@ export const AnatomyCanvas: React.FC<AnatomyCanvasProps> = ({
       bumpScale: 0.012,
       transparent: true,
       opacity: 1.0,
+      side: THREE.DoubleSide,
     });
 
     const skinShellMat = new THREE.MeshPhysicalMaterial({
@@ -291,6 +337,21 @@ export const AnatomyCanvas: React.FC<AnatomyCanvasProps> = ({
       string,
       { center: THREE.Vector3; size: THREE.Vector3 }
     >();
+    const recomputeBodyLocalBox = () => {
+      const b = new THREE.Box3();
+      const ptMin = new THREE.Vector3();
+      const ptMax = new THREE.Vector3();
+      restLocalBoxes.forEach((entry, pid) => {
+        if (pid === 'skin_envelope') return;
+        ptMin.copy(entry.center).addScaledVector(entry.size, -0.5);
+        ptMax.copy(entry.center).addScaledVector(entry.size, 0.5);
+        b.expandByPoint(ptMin);
+        b.expandByPoint(ptMax);
+      });
+      if (!b.isEmpty()) {
+        bodyLocalBox.copy(b);
+      }
+    };
     const bilateralSubBoxes = new Map<
       string,
       {
@@ -724,6 +785,7 @@ export const AnatomyCanvas: React.FC<AnatomyCanvasProps> = ({
         });
 
         baseSkeletonLoaded = true;
+        recomputeBodyLocalBox();
         onModelReady(loadedCount);
 
         if (pendingHdAfterSkeleton.size > 0) {
@@ -826,6 +888,9 @@ export const AnatomyCanvas: React.FC<AnatomyCanvasProps> = ({
 
       const hits = raycaster.intersectObjects(primaryTargets, true);
       for (const hit of hits) {
+        if (propsRef.current.sliceConfig.enabled && clipPlane.distanceToPoint(hit.point) < -1e-4) {
+          continue;
+        }
         const pid = hit.object.userData?.partId as string | undefined;
         if (pid && PARTS_BY_ID[pid]) return pid;
       }
@@ -833,6 +898,9 @@ export const AnatomyCanvas: React.FC<AnatomyCanvasProps> = ({
       if (fallbackSkin.length > 0 && primaryTargets.length === 0) {
         const skinHits = raycaster.intersectObjects(fallbackSkin, true);
         for (const hit of skinHits) {
+          if (propsRef.current.sliceConfig.enabled && clipPlane.distanceToPoint(hit.point) < -1e-4) {
+            continue;
+          }
           const pid = hit.object.userData?.partId as string | undefined;
           if (pid && PARTS_BY_ID[pid]) return pid;
         }
@@ -899,6 +967,10 @@ export const AnatomyCanvas: React.FC<AnatomyCanvasProps> = ({
     const box3 = new THREE.Box3();
     const boxCenter = new THREE.Vector3();
     const projV3 = new THREE.Vector3();
+    const sliceBoxMin = new THREE.Vector3();
+    const sliceBoxMax = new THREE.Vector3();
+    const sliceLocalCenter = new THREE.Vector3();
+    const sliceHalfSize = new THREE.Vector3();
 
     const PRESET_VIEWS: Record<
       Exclude<CameraPreset, 'default'>,
@@ -922,6 +994,8 @@ export const AnatomyCanvas: React.FC<AnatomyCanvasProps> = ({
 
       const activeChapterData = CHAPTERS[state.activeChapter] ?? CHAPTERS[0];
       const chapterHighlights = activeChapterData.highlights;
+      const wantClip = state.sliceConfig.enabled;
+      applyClipState(boneBaseMat, wantClip);
 
       /* --- A. Update Dissection Offsets (with Symmetric Bilateral Sub-Groups) --- */
       const peelEase = 1 - Math.pow(1 - state.scrollProgress, 2.5);
@@ -1017,8 +1091,10 @@ export const AnatomyCanvas: React.FC<AnatomyCanvasProps> = ({
 
         if (part.id === 'skin_envelope') {
           skinShellMat.opacity = isGhostedByIsolation ? 0.04 : baseSysOpacity;
+          applyClipState(skinShellMat, wantClip);
         } else if (part.glbMeshName && boneMaterialsById[part.id]) {
           const bMat = boneMaterialsById[part.id];
+          applyClipState(bMat, wantClip);
           if (isGhostedByIsolation) {
             bMat.color.setHex(0x64748b);
             bMat.emissive.setHex(0x000000);
@@ -1073,6 +1149,7 @@ export const AnatomyCanvas: React.FC<AnatomyCanvasProps> = ({
             matEntries.forEach(({ baseMat }) => {
               const orig = originalSculptColors.get(baseMat);
               if (!orig) return;
+              applyClipState(baseMat, wantClip);
 
               if (isGhostedByIsolation) {
                 baseMat.color.setHex(orig.color);
@@ -1298,6 +1375,71 @@ export const AnatomyCanvas: React.FC<AnatomyCanvasProps> = ({
         }
       }
 
+      /* --- D2. Real-Time MRI Cross-Section Plane & Clinical Scan Guide --- */
+      if (wantClip) {
+        const isoRest = state.isolatedPartId
+          ? restLocalBoxes.get(state.isolatedPartId)
+          : undefined;
+        if (state.isolatedPartId && isolatedGroup && isoRest) {
+          let maxSpreadX = 0;
+          if (isolatedGroup.userData.isBilateral) {
+            for (let ci = 0; ci < isolatedGroup.children.length; ci++) {
+              maxSpreadX = Math.max(maxSpreadX, Math.abs(isolatedGroup.children[ci].position.x));
+            }
+          }
+          sliceHalfSize.set(
+            isoRest.size.x * 0.5 + maxSpreadX,
+            isoRest.size.y * 0.5,
+            isoRest.size.z * 0.5
+          );
+          sliceLocalCenter.copy(isoRest.center).add(isolatedGroup.position);
+          sliceBoxMin.copy(sliceLocalCenter).sub(sliceHalfSize);
+          sliceBoxMax.copy(sliceLocalCenter).add(sliceHalfSize);
+        } else {
+          sliceBoxMin.copy(bodyLocalBox.min);
+          sliceBoxMax.copy(bodyLocalBox.max);
+        }
+
+        const cx = (sliceBoxMin.x + sliceBoxMax.x) * 0.5;
+        const cy = (sliceBoxMin.y + sliceBoxMax.y) * 0.5;
+        const cz = (sliceBoxMin.z + sliceBoxMax.z) * 0.5;
+        const sizeX = Math.max(4, sliceBoxMax.x - sliceBoxMin.x);
+        const sizeY = Math.max(4, sliceBoxMax.y - sliceBoxMin.y);
+        const sizeZ = Math.max(4, sliceBoxMax.z - sliceBoxMin.z);
+        const pad = Math.max(2.0, Math.min(sizeX, sizeY, sizeZ) * 0.16);
+        const pos = THREE.MathUtils.clamp(state.sliceConfig.position, 0.02, 0.98);
+        const inv = state.sliceConfig.invert;
+
+        if (state.sliceConfig.axis === 'coronal') {
+          const coord = THREE.MathUtils.lerp(sliceBoxMax.z + 0.5, sliceBoxMin.z - 0.5, pos);
+          localPlane.normal.set(0, 0, inv ? 1 : -1);
+          localPlane.constant = inv ? -coord : coord;
+          sliceHelperGroup.position.set(cx, cy, coord);
+          sliceHelperGroup.rotation.set(0, 0, 0);
+          sliceHelperGroup.scale.set(sizeX + pad, sizeY + pad, 1);
+        } else if (state.sliceConfig.axis === 'sagittal') {
+          const coord = THREE.MathUtils.lerp(sliceBoxMax.x + 0.5, sliceBoxMin.x - 0.5, pos);
+          localPlane.normal.set(inv ? 1 : -1, 0, 0);
+          localPlane.constant = inv ? -coord : coord;
+          sliceHelperGroup.position.set(coord, cy, cz);
+          sliceHelperGroup.rotation.set(0, Math.PI / 2, 0);
+          sliceHelperGroup.scale.set(sizeZ + pad, sizeY + pad, 1);
+        } else {
+          const coord = THREE.MathUtils.lerp(sliceBoxMax.y + 0.5, sliceBoxMin.y - 0.5, pos);
+          localPlane.normal.set(0, inv ? 1 : -1, 0);
+          localPlane.constant = inv ? -coord : coord;
+          sliceHelperGroup.position.set(cx, coord, cz);
+          sliceHelperGroup.rotation.set(Math.PI / 2, 0, 0);
+          sliceHelperGroup.scale.set(sizeX + pad, sizeZ + pad, 1);
+        }
+
+        sliceHelperGroup.visible = state.sliceConfig.showPlaneHelper;
+        anatomicalRoot.updateMatrixWorld(true);
+        clipPlane.copy(localPlane).applyMatrix4(anatomicalRoot.matrixWorld);
+      } else {
+        sliceHelperGroup.visible = false;
+      }
+
       /* --- E. Project 3D Floating Pins + 2D Screen-Space De-Overlapping --- */
       const pinsRoot = pinsRef.current;
       if (pinsRoot) {
@@ -1358,6 +1500,10 @@ export const AnatomyCanvas: React.FC<AnatomyCanvasProps> = ({
               anchor[2] + grp.position.z
             );
             projV3.applyMatrix4(anatomicalRoot.matrixWorld);
+            if (wantClip && pid !== state.isolatedPartId && clipPlane.distanceToPoint(projV3) < -0.04) {
+              el.style.display = 'none';
+              continue;
+            }
             projV3.project(camera);
 
             if (projV3.z > 1 || projV3.z < -1) {
@@ -1434,6 +1580,10 @@ export const AnatomyCanvas: React.FC<AnatomyCanvasProps> = ({
       gridHelper.dispose();
       ringGeom.dispose();
       ringMat.dispose();
+      sliceFillGeom.dispose();
+      sliceFillMat.dispose();
+      sliceEdgeGeom.dispose();
+      sliceEdgeMat.dispose();
       renderer.dispose();
       if (domEl.parentNode === container) {
         container.removeChild(domEl);

@@ -22,6 +22,7 @@ import {
   CameraPreset,
   DissectionMode,
   ImagingMode,
+  SliceConfig,
   SystemId,
 } from './types/anatomy';
 
@@ -77,6 +78,13 @@ export const App: React.FC = () => {
   const [hdPartStates, setHdPartStates] = useState<Record<string, HdPartStatus>>({});
   const [preloadAllHdTick, setPreloadAllHdTick] = useState(0);
   const [ktx2Ready, setKtx2Ready] = useState(false);
+  const [sliceConfig, setSliceConfig] = useState<SliceConfig>({
+    enabled: false,
+    axis: 'coronal',
+    position: 0.48,
+    invert: false,
+    showPlaneHelper: true,
+  });
 
   useEffect(() => {
     void fetchHdManifest().then((m) => {
@@ -299,6 +307,14 @@ export const App: React.FC = () => {
     setLayerStates(buildInitialLayerStates());
   }, []);
 
+  const handleToggleSlice = useCallback(() => {
+    setSliceConfig((prev) => ({ ...prev, enabled: !prev.enabled }));
+  }, []);
+
+  const handleUpdateSlice = useCallback((patch: Partial<SliceConfig>) => {
+    setSliceConfig((prev) => ({ ...prev, ...patch }));
+  }, []);
+
   /* -------------------- KEYBOARD SHORTCUTS -------------------- */
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
@@ -329,6 +345,8 @@ export const App: React.FC = () => {
         setLayersOpen((v) => !v);
       } else if (e.key.toLowerCase() === 'x') {
         handleCycleImagingMode();
+      } else if (e.key.toLowerCase() === 'c') {
+        handleToggleSlice();
       }
     };
     window.addEventListener('keydown', onKeyDown);
@@ -337,6 +355,7 @@ export const App: React.FC = () => {
     handleCycleImagingMode,
     handleSelectChapter,
     handleToggleFullscreen,
+    handleToggleSlice,
     isolatedPartId,
     searchOpen,
   ]);
@@ -441,6 +460,7 @@ export const App: React.FC = () => {
         isPlaying={isPlaying}
         cinemaMode={cinemaMode}
         heartRateBpm={heartRateBpm}
+        sliceConfig={sliceConfig}
         cameraPreset={cameraPreset}
         cameraPresetTick={cameraPresetTick}
         zoomCommand={zoomCommand}
@@ -508,6 +528,7 @@ export const App: React.FC = () => {
         hdLoadedCount={hdLoadedCount}
         hdTotalCount={HD_PART_IDS.length}
         hdLoadingCount={hdLoadingCount}
+        sliceConfig={sliceConfig}
         onManualProgress={handleManualProgress}
         onToggleAutoDissect={() => setAutoDissect((v) => !v)}
         onChangeDissectionMode={handleChangeDissectionMode}
@@ -519,6 +540,8 @@ export const App: React.FC = () => {
         onTogglePins={() => setShowPins((v) => !v)}
         onTogglePlay={() => setIsPlaying((v) => !v)}
         onPreloadAllHd={() => setPreloadAllHdTick((t) => t + 1)}
+        onToggleSlice={handleToggleSlice}
+        onUpdateSlice={handleUpdateSlice}
       />
 
       {/* Right VisionOS Clinical Profile Inspector Window */}
@@ -529,6 +552,8 @@ export const App: React.FC = () => {
         hdStatus={selectedPartId ? hdPartStates[selectedPartId] : undefined}
         hdInfo={selectedPartId ? hdManifest?.parts[selectedPartId] : undefined}
         ktx2Ready={ktx2Ready}
+        sliceEnabled={sliceConfig.enabled}
+        onToggleSlice={handleToggleSlice}
         onClose={() => {
           setSelectedPartId(null);
           setIsolatedPartId(null);

@@ -267,6 +267,7 @@ export function buildSculptedAnatomy(): SculptedAnatomyResult {
     bumpScale: 0.09,
     transparent: true,
     opacity: 1.0,
+    side: THREE.DoubleSide,
   });
 
   const nerveMat = new THREE.MeshPhysicalMaterial({
@@ -278,6 +279,7 @@ export function buildSculptedAnatomy(): SculptedAnatomyResult {
     clearcoat: 0.25,
     transparent: true,
     opacity: 1.0,
+    side: THREE.DoubleSide,
   });
 
   const arteryMat = new THREE.MeshPhysicalMaterial({
@@ -289,6 +291,7 @@ export function buildSculptedAnatomy(): SculptedAnatomyResult {
     clearcoat: 0.5,
     transparent: true,
     opacity: 1.0,
+    side: THREE.DoubleSide,
   });
 
   const veinMat = new THREE.MeshPhysicalMaterial({
@@ -300,6 +303,7 @@ export function buildSculptedAnatomy(): SculptedAnatomyResult {
     clearcoat: 0.45,
     transparent: true,
     opacity: 1.0,
+    side: THREE.DoubleSide,
   });
 
   const muscleMat = new THREE.MeshPhysicalMaterial({
@@ -314,6 +318,7 @@ export function buildSculptedAnatomy(): SculptedAnatomyResult {
     bumpScale: 0.14,
     transparent: true,
     opacity: 0.88,
+    side: THREE.DoubleSide,
   });
 
   const tendonMat = new THREE.MeshStandardMaterial({
@@ -322,6 +327,7 @@ export function buildSculptedAnatomy(): SculptedAnatomyResult {
     metalness: 0.05,
     transparent: true,
     opacity: 0.92,
+    side: THREE.DoubleSide,
   });
 
   const heartMat = new THREE.MeshPhysicalMaterial({
@@ -336,6 +342,7 @@ export function buildSculptedAnatomy(): SculptedAnatomyResult {
     bumpScale: 0.06,
     transparent: true,
     opacity: 1.0,
+    side: THREE.DoubleSide,
   });
 
   const lungMat = new THREE.MeshPhysicalMaterial({
@@ -350,6 +357,7 @@ export function buildSculptedAnatomy(): SculptedAnatomyResult {
     bumpScale: 0.1,
     transparent: true,
     opacity: 1.0,
+    side: THREE.DoubleSide,
   });
 
   const cartilageMat = new THREE.MeshStandardMaterial({
@@ -358,6 +366,7 @@ export function buildSculptedAnatomy(): SculptedAnatomyResult {
     metalness: 0.05,
     transparent: true,
     opacity: 0.95,
+    side: THREE.DoubleSide,
   });
 
   const liverMat = new THREE.MeshPhysicalMaterial({
@@ -372,6 +381,7 @@ export function buildSculptedAnatomy(): SculptedAnatomyResult {
     bumpScale: 0.05,
     transparent: true,
     opacity: 1.0,
+    side: THREE.DoubleSide,
   });
 
   const gallbladderMat = new THREE.MeshPhysicalMaterial({
@@ -382,6 +392,7 @@ export function buildSculptedAnatomy(): SculptedAnatomyResult {
     clearcoat: 0.6,
     transparent: true,
     opacity: 1.0,
+    side: THREE.DoubleSide,
   });
 
   const stomachMat = new THREE.MeshPhysicalMaterial({
@@ -394,6 +405,7 @@ export function buildSculptedAnatomy(): SculptedAnatomyResult {
     bumpScale: 0.07,
     transparent: true,
     opacity: 1.0,
+    side: THREE.DoubleSide,
   });
 
   const kidneyMat = new THREE.MeshPhysicalMaterial({
@@ -406,6 +418,7 @@ export function buildSculptedAnatomy(): SculptedAnatomyResult {
     bumpScale: 0.06,
     transparent: true,
     opacity: 1.0,
+    side: THREE.DoubleSide,
   });
 
   const intestineSmallMat = new THREE.MeshPhysicalMaterial({
@@ -418,6 +431,7 @@ export function buildSculptedAnatomy(): SculptedAnatomyResult {
     bumpScale: 0.07,
     transparent: true,
     opacity: 1.0,
+    side: THREE.DoubleSide,
   });
 
   const intestineLargeMat = new THREE.MeshPhysicalMaterial({
@@ -430,6 +444,7 @@ export function buildSculptedAnatomy(): SculptedAnatomyResult {
     bumpScale: 0.08,
     transparent: true,
     opacity: 1.0,
+    side: THREE.DoubleSide,
   });
 
   /* ============================================================================

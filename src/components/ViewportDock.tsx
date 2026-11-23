@@ -1,18 +1,27 @@
 import React from 'react';
 import {
+  ArrowLeftRight,
+  Layers,
   Orbit,
   Pause,
   Play,
   RotateCcw,
   RotateCw,
   Scan,
+  Scissors,
   Sparkles,
   Split,
   Tag,
   ZoomIn,
   ZoomOut,
 } from 'lucide-react';
-import { CameraPreset, DissectionMode, ImagingMode } from '../types/anatomy';
+import {
+  CameraPreset,
+  DissectionMode,
+  ImagingMode,
+  SliceAxis,
+  SliceConfig,
+} from '../types/anatomy';
 
 interface ViewportDockProps {
   dissectionProgress: number;
@@ -28,6 +37,7 @@ interface ViewportDockProps {
   hdLoadedCount: number;
   hdTotalCount: number;
   hdLoadingCount: number;
+  sliceConfig: SliceConfig;
   onManualProgress: (val: number) => void;
   onToggleAutoDissect: () => void;
   onChangeDissectionMode: (mode: DissectionMode) => void;
@@ -39,7 +49,15 @@ interface ViewportDockProps {
   onTogglePins: () => void;
   onTogglePlay: () => void;
   onPreloadAllHd: () => void;
+  onToggleSlice: () => void;
+  onUpdateSlice: (patch: Partial<SliceConfig>) => void;
 }
+
+const SLICE_AXES: Array<{ id: SliceAxis; label: string }> = [
+  { id: 'coronal', label: 'Coronal' },
+  { id: 'sagittal', label: 'Sagittal' },
+  { id: 'axial', label: 'Axial' },
+];
 
 const PRESETS: Array<{ id: CameraPreset; label: string }> = [
   { id: 'anterior', label: 'Ant' },
@@ -63,6 +81,7 @@ export const ViewportDock: React.FC<ViewportDockProps> = ({
   hdLoadedCount,
   hdTotalCount,
   hdLoadingCount,
+  sliceConfig,
   onManualProgress,
   onToggleAutoDissect,
   onChangeDissectionMode,
@@ -74,6 +93,8 @@ export const ViewportDock: React.FC<ViewportDockProps> = ({
   onTogglePins,
   onTogglePlay,
   onPreloadAllHd,
+  onToggleSlice,
+  onUpdateSlice,
 }) => {
   const allHdLoaded = hdTotalCount > 0 && hdLoadedCount >= hdTotalCount;
   const imagingLabel =
@@ -90,6 +111,67 @@ export const ViewportDock: React.FC<ViewportDockProps> = ({
       aria-label="Spatial 3D Control Bar"
     >
       <div className="spatial-dock spatial-glass">
+        {sliceConfig.enabled && (
+          <div
+            className="spatial-dock-row spatial-slice-row"
+            role="region"
+            aria-label="MRI Cross-Section Controls"
+          >
+            <div className="spatial-seg-group" role="group" aria-label="MRI Slice Plane">
+              {SLICE_AXES.map((ax) => (
+                <button
+                  key={ax.id}
+                  type="button"
+                  className={`spatial-preset-btn ${sliceConfig.axis === ax.id ? 'active' : ''}`}
+                  aria-pressed={sliceConfig.axis === ax.id}
+                  onClick={() => onUpdateSlice({ axis: ax.id })}
+                >
+                  {ax.label}
+                </button>
+              ))}
+            </div>
+
+            <div className="spatial-scrubber spatial-slice-scrubber">
+              <input
+                type="range"
+                className="spatial-range"
+                aria-label="MRI slice depth"
+                min={0.02}
+                max={0.98}
+                step={0.005}
+                value={sliceConfig.position}
+                onChange={(e) => onUpdateSlice({ position: parseFloat(e.target.value) })}
+              />
+              <span className="spatial-scrubber-val">
+                {Math.round(sliceConfig.position * 100)}%
+              </span>
+            </div>
+
+            <div className="spatial-seg-group">
+              <button
+                type="button"
+                className={`spatial-preset-btn ${sliceConfig.invert ? 'active' : ''}`}
+                aria-pressed={sliceConfig.invert}
+                onClick={() => onUpdateSlice({ invert: !sliceConfig.invert })}
+                title="Invert clipped half (show opposite cross-section side)"
+              >
+                <ArrowLeftRight size={11} />
+                <span>Flip</span>
+              </button>
+              <button
+                type="button"
+                className={`spatial-preset-btn ${sliceConfig.showPlaneHelper ? 'active' : ''}`}
+                aria-pressed={sliceConfig.showPlaneHelper}
+                onClick={() => onUpdateSlice({ showPlaneHelper: !sliceConfig.showPlaneHelper })}
+                title="Show/Hide Glowing MRI Scan Plane Guide"
+              >
+                <Layers size={11} />
+                <span>Plane</span>
+              </button>
+            </div>
+          </div>
+        )}
+
         <div className="spatial-dock-row">
           <button
             type="button"
@@ -156,6 +238,18 @@ export const ViewportDock: React.FC<ViewportDockProps> = ({
                     ? `HD ${hdLoadedCount}/${hdTotalCount}…`
                     : `HD ${hdLoadedCount}/${hdTotalCount}`}
               </span>
+            </button>
+
+            <button
+              type="button"
+              className={`spatial-pill-btn ${sliceConfig.enabled ? 'active' : ''}`}
+              onClick={onToggleSlice}
+              aria-pressed={sliceConfig.enabled}
+              aria-label="Toggle 3D MRI Cross-Section Slice"
+              title="Toggle Real-Time 3D MRI Cross-Section Slice (C)"
+            >
+              <Scissors size={12} />
+              <span>Slice</span>
             </button>
           </div>
         </div>

@@ -10,6 +10,7 @@ import {
   Focus,
   Gauge,
   Loader2,
+  Scissors,
   Sparkles,
   Stethoscope,
   X,
@@ -28,10 +29,12 @@ interface ClinicalInspectorProps {
   hdStatus?: HdPartStatus;
   hdInfo?: HdManifestEntry | null;
   ktx2Ready?: boolean;
+  sliceEnabled?: boolean;
   onClose: () => void;
   onSelectPart: (partId: string) => void;
   onToggleIsolate: (partId: string) => void;
   onToggleGhostContext: () => void;
+  onToggleSlice?: () => void;
 }
 
 const TAB_DEFS: Array<{ id: InspectorTabId; label: string }> = [
@@ -47,10 +50,12 @@ export const ClinicalInspector: React.FC<ClinicalInspectorProps> = ({
   hdStatus,
   hdInfo,
   ktx2Ready,
+  sliceEnabled,
   onClose,
   onSelectPart,
   onToggleIsolate,
   onToggleGhostContext,
+  onToggleSlice,
 }) => {
   const [activeTab, setActiveTab] = useState<InspectorTabId>('overview');
   const [langMode, setLangMode] = useState<LangMode>('both');
@@ -225,6 +230,19 @@ export const ClinicalInspector: React.FC<ClinicalInspectorProps> = ({
             >
               {isolationGhostContext ? <Eye size={12} /> : <EyeOff size={12} />}
               <span>{isolationGhostContext ? 'Ghost' : 'Solo'}</span>
+            </button>
+          )}
+
+          {onToggleSlice && (
+            <button
+              type="button"
+              className={`spatial-pill-btn ${sliceEnabled ? 'active' : ''}`}
+              onClick={onToggleSlice}
+              aria-pressed={sliceEnabled}
+              title="Toggle 3D MRI Cross-Section (C)"
+            >
+              <Scissors size={12} />
+              <span>{sliceEnabled ? 'Slice On' : 'Slice'}</span>
             </button>
           )}
 
