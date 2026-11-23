@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-11-22T11:47:22.314Z",
+  "generatedAt": "2026-11-23T00:48:28.643Z",
   "baseSkeleton": {
     "rawBytes": 5448444,
     "compressedBytes": 286612,
@@ -79,6 +79,60 @@
       "rawBytes": 2366084,
       "compressedBytes": 292020
     },
+    "organ_eyes": {
+      "file": "eye.glb",
+      "source": "BodyParts3D / OrganUI eye-3d (Globe, Cornea, Lens, Retina, Optic Nerve & 6 Muscles)",
+      "license": "CC BY-SA 2.1 JP",
+      "triangles": 143318,
+      "meshes": 16,
+      "rawBytes": 3947432,
+      "compressedBytes": 439220
+    },
+    "organ_larynx": {
+      "file": "larynx.glb",
+      "source": "BodyParts3D / OrganUI larynx-3d (Thyroid/Cricoid Cartilages, Epiglottis & Vocal Cords)",
+      "license": "CC BY-SA 2.1 JP",
+      "triangles": 156310,
+      "meshes": 19,
+      "rawBytes": 5257920,
+      "compressedBytes": 605396
+    },
+    "organ_esophagus": {
+      "file": "esophagus.glb",
+      "source": "BodyParts3D / OrganUI esophagus-3d (Esophageal Tube, Arteries & Vagal Plexus)",
+      "license": "CC BY-SA 2.1 JP",
+      "triangles": 57088,
+      "meshes": 4,
+      "rawBytes": 4001332,
+      "compressedBytes": 139564
+    },
+    "organ_pancreas": {
+      "file": "pancreas.glb",
+      "source": "BodyParts3D / OrganUI pancreas-3d (Pancreas, Wirsung Duct & Vascular Arcades)",
+      "license": "CC BY-SA 2.1 JP",
+      "triangles": 14776,
+      "meshes": 5,
+      "rawBytes": 881964,
+      "compressedBytes": 60724
+    },
+    "organ_spleen": {
+      "file": "spleen.glb",
+      "source": "BodyParts3D / OrganUI spleen-3d (Splenic Parenchyma & Hilum Vessels)",
+      "license": "CC BY-SA 2.1 JP",
+      "triangles": 13694,
+      "meshes": 3,
+      "rawBytes": 1695732,
+      "compressedBytes": 44224
+    },
+    "organ_bladder": {
+      "file": "bladder.glb",
+      "source": "BodyParts3D / OrganUI bladder-3d (Urinary Bladder, Urethra & Pelvic Outlet)",
+      "license": "CC BY-SA 2.1 JP",
+      "triangles": 8619,
+      "meshes": 5,
+      "rawBytes": 1817148,
+      "compressedBytes": 32900
+    },
     "SM_HumanSkeleton_17": {
       "file": "cranium.glb",
       "source": "BodyParts3D / OrganUI skeleton-3d (21 Cranial & Facial Bones)",
@@ -123,6 +177,132 @@
       "meshes": 3,
       "rawBytes": 5221116,
       "compressedBytes": 35308
+    },
+    "SM_HumanSkeleton_15": {
+      "file": "r-shoulder.glb",
+      "source": "BodyParts3D / OrganUI skeleton-3d (Right Clavicle & Scapula)",
+      "license": "CC BY-SA 2.1 JP",
+      "triangles": 4752,
+      "meshes": 2,
+      "rawBytes": 5221116,
+      "compressedBytes": 18620
+    },
+    "SM_HumanSkeleton_13": {
+      "file": "l-shoulder.glb",
+      "source": "BodyParts3D / OrganUI skeleton-3d (Left Clavicle & Scapula)",
+      "license": "CC BY-SA 2.1 JP",
+      "triangles": 4752,
+      "meshes": 2,
+      "rawBytes": 5221116,
+      "compressedBytes": 18644
+    },
+    "SM_HumanSkeleton_10": {
+      "file": "r-humerus.glb",
+      "source": "BodyParts3D / OrganUI skeleton-3d (Right Humerus)",
+      "license": "CC BY-SA 2.1 JP",
+      "triangles": 3928,
+      "meshes": 1,
+      "rawBytes": 5221116,
+      "compressedBytes": 13616
+    },
+    "SM_HumanSkeleton_12": {
+      "file": "l-humerus.glb",
+      "source": "BodyParts3D / OrganUI skeleton-3d (Left Humerus)",
+      "license": "CC BY-SA 2.1 JP",
+      "triangles": 3928,
+      "meshes": 1,
+      "rawBytes": 5221116,
+      "compressedBytes": 13504
+    },
+    "SM_HumanSkeleton_02": {
+      "file": "r-forearm.glb",
+      "source": "BodyParts3D / OrganUI skeleton-3d (Right Radius & Ulna)",
+      "license": "CC BY-SA 2.1 JP",
+      "triangles": 5984,
+      "meshes": 2,
+      "rawBytes": 5221116,
+      "compressedBytes": 20612
+    },
+    "SM_HumanSkeleton_01": {
+      "file": "l-forearm.glb",
+      "source": "BodyParts3D / OrganUI skeleton-3d (Left Radius & Ulna)",
+      "license": "CC BY-SA 2.1 JP",
+      "triangles": 5894,
+      "meshes": 2,
+      "rawBytes": 5221116,
+      "compressedBytes": 20316
+    },
+    "SM_HumanSkeleton_19": {
+      "file": "r-hand.glb",
+      "source": "BodyParts3D / OrganUI skeleton-3d (Right 27-Bone Carpus, Metacarpals & Phalanges)",
+      "license": "CC BY-SA 2.1 JP",
+      "triangles": 13892,
+      "meshes": 27,
+      "rawBytes": 5221116,
+      "compressedBytes": 74488
+    },
+    "SM_HumanSkeleton_14": {
+      "file": "l-hand.glb",
+      "source": "BodyParts3D / OrganUI skeleton-3d (Left 27-Bone Carpus, Metacarpals & Phalanges)",
+      "license": "CC BY-SA 2.1 JP",
+      "triangles": 13872,
+      "meshes": 27,
+      "rawBytes": 5221116,
+      "compressedBytes": 74012
+    },
+    "SM_HumanSkeleton_04": {
+      "file": "r-femur.glb",
+      "source": "BodyParts3D / OrganUI skeleton-3d (Right Femur & Patella)",
+      "license": "CC BY-SA 2.1 JP",
+      "triangles": 6268,
+      "meshes": 2,
+      "rawBytes": 5221116,
+      "compressedBytes": 21516
+    },
+    "SM_HumanSkeleton_05": {
+      "file": "l-femur.glb",
+      "source": "BodyParts3D / OrganUI skeleton-3d (Left Femur & Patella)",
+      "license": "CC BY-SA 2.1 JP",
+      "triangles": 6266,
+      "meshes": 2,
+      "rawBytes": 5221116,
+      "compressedBytes": 21444
+    },
+    "SM_HumanSkeleton_07": {
+      "file": "r-shin.glb",
+      "source": "BodyParts3D / OrganUI skeleton-3d (Right Tibia & Fibula)",
+      "license": "CC BY-SA 2.1 JP",
+      "triangles": 8580,
+      "meshes": 2,
+      "rawBytes": 5221116,
+      "compressedBytes": 27876
+    },
+    "SM_HumanSkeleton_06": {
+      "file": "l-shin.glb",
+      "source": "BodyParts3D / OrganUI skeleton-3d (Left Tibia & Fibula)",
+      "license": "CC BY-SA 2.1 JP",
+      "triangles": 8578,
+      "meshes": 2,
+      "rawBytes": 5221116,
+      "compressedBytes": 27796
+    },
+    "SM_HumanSkeleton_09": {
+      "file": "r-foot.glb",
+      "source": "BodyParts3D / OrganUI skeleton-3d (Right 26-Bone Tarsus, Metatarsals & Toes)",
+      "license": "CC BY-SA 2.1 JP",
+      "triangles": 15830,
+      "meshes": 27,
+      "rawBytes": 5221116,
+      "compressedBytes": 81672
+    },
+    "SM_HumanSkeleton_03": {
+      "file": "l-foot.glb",
+      "source": "BodyParts3D / OrganUI skeleton-3d (Left 26-Bone Tarsus, Metatarsals & Toes)",
+      "license": "CC BY-SA 2.1 JP",
+      "triangles": 15856,
+      "meshes": 27,
+      "rawBytes": 5221116,
+      "compressedBytes": 81456
     }
   }
 }

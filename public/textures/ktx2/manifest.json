@@ -1,0 +1,52 @@
+{
+  "generatedAt": "2026-11-23T00:47:39.156Z",
+  "resolution": "512x512",
+  "format": "KTX2 Basis Universal UASTC",
+  "textures": {
+    "bone-normal.ktx2": {
+      "file": "bone-normal.ktx2",
+      "width": 512,
+      "height": 512,
+      "isNormalMap": true,
+      "encoding": "UASTC+Zstd+Mipmaps",
+      "rawBytes": 1048576,
+      "ktx2Bytes": 181540
+    },
+    "bone-roughness.ktx2": {
+      "file": "bone-roughness.ktx2",
+      "width": 512,
+      "height": 512,
+      "isNormalMap": false,
+      "encoding": "UASTC+Zstd+Mipmaps",
+      "rawBytes": 1048576,
+      "ktx2Bytes": 146764
+    },
+    "organ-normal.ktx2": {
+      "file": "organ-normal.ktx2",
+      "width": 512,
+      "height": 512,
+      "isNormalMap": true,
+      "encoding": "UASTC+Zstd+Mipmaps",
+      "rawBytes": 1048576,
+      "ktx2Bytes": 143886
+    },
+    "organ-roughness.ktx2": {
+      "file": "organ-roughness.ktx2",
+      "width": 512,
+      "height": 512,
+      "isNormalMap": false,
+      "encoding": "UASTC+Zstd+Mipmaps",
+      "rawBytes": 1048576,
+      "ktx2Bytes": 130223
+    },
+    "muscle-normal.ktx2": {
+      "file": "muscle-normal.ktx2",
+      "width": 512,
+      "height": 512,
+      "isNormalMap": true,
+      "encoding": "UASTC+Zstd+Mipmaps",
+      "rawBytes": 1048576,
+      "ktx2Bytes": 83672
+    }
+  }
+}

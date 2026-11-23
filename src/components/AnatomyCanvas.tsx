@@ -12,12 +12,15 @@ import { buildSculptedAnatomy, SculptedAnatomyResult } from '../three/AnatomyScu
 import {
   createDracoGltfLoader,
   createMicroBumpTexture,
+  ensureBoxUVs,
   HD_PART_CONFIGS,
   HD_PART_IDS,
   HdPartStatus,
   loadHdPartScene,
+  mirrorObjectGeometryX,
   upgradeHdOrganMaterial,
 } from '../three/HighPolyAssetManager';
+import { Ktx2PbrTextureSet, loadKtx2PbrTextures } from '../three/Ktx2PbrManager';
 import {
   CameraPreset,
   DissectionMode,
@@ -54,6 +57,7 @@ interface AnatomyCanvasProps {
   onModelReady: (loadedCount: number) => void;
   onModelError: (errMsg: string) => void;
   onHdStatusChange: (partId: string, status: HdPartStatus) => void;
+  onKtx2Ready?: (ready: boolean) => void;
 }
 
 interface PinScreenPos {
@@ -87,12 +91,15 @@ export const AnatomyCanvas: React.FC<AnatomyCanvasProps> = ({
   onModelReady,
   onModelError,
   onHdStatusChange,
+  onKtx2Ready,
 }) => {
   const mountRef = useRef<HTMLDivElement | null>(null);
   const pinsRef = useRef<HTMLDivElement | null>(null);
   const hdTriggerRef = useRef<((partId: string) => Promise<void>) | null>(null);
   const onHdStatusChangeRef = useRef(onHdStatusChange);
   onHdStatusChangeRef.current = onHdStatusChange;
+  const onKtx2ReadyRef = useRef(onKtx2Ready);
+  onKtx2ReadyRef.current = onKtx2Ready;
   const [hoveredId, setHoveredId] = useState<string | null>(null);
   const [hoverScreenPos, setHoverScreenPos] = useState<{ x: number; y: number }>({
     x: 0,
@@ -188,6 +195,7 @@ export const AnatomyCanvas: React.FC<AnatomyCanvasProps> = ({
 
     const boneMicroTex = createMicroBumpTexture('bone');
     const organMicroTex = createMicroBumpTexture('organ');
+    let ktx2Set: Ktx2PbrTextureSet | null = null;
 
     const controls = new OrbitControls(camera, renderer.domElement);
     controls.enableDamping = true;
@@ -283,6 +291,13 @@ export const AnatomyCanvas: React.FC<AnatomyCanvasProps> = ({
       string,
       { center: THREE.Vector3; size: THREE.Vector3 }
     >();
+    const bilateralSubBoxes = new Map<
+      string,
+      {
+        right?: { center: THREE.Vector3; size: THREE.Vector3 };
+        left?: { center: THREE.Vector3; size: THREE.Vector3 };
+      }
+    >();
     const boneMaterialsById: Record<string, THREE.MeshPhysicalMaterial> = {};
     const hdLoadedSet = new Set<string>();
     const hdInFlightSet = new Set<string>();
@@ -312,6 +327,33 @@ export const AnatomyCanvas: React.FC<AnatomyCanvasProps> = ({
           center: b.getCenter(new THREE.Vector3()),
           size: b.getSize(new THREE.Vector3()),
         });
+      }
+      if (grp.userData.isBilateral) {
+        const rSub = grp.children.find((c) => c.userData.bilateralSide === -1);
+        const lSub = grp.children.find((c) => c.userData.bilateralSide === 1);
+        const entry: {
+          right?: { center: THREE.Vector3; size: THREE.Vector3 };
+          left?: { center: THREE.Vector3; size: THREE.Vector3 };
+        } = {};
+        if (rSub) {
+          const rb = new THREE.Box3().setFromObject(rSub);
+          if (!rb.isEmpty()) {
+            entry.right = {
+              center: rb.getCenter(new THREE.Vector3()),
+              size: rb.getSize(new THREE.Vector3()),
+            };
+          }
+        }
+        if (lSub) {
+          const lb = new THREE.Box3().setFromObject(lSub);
+          if (!lb.isEmpty()) {
+            entry.left = {
+              center: lb.getCenter(new THREE.Vector3()),
+              size: lb.getSize(new THREE.Vector3()),
+            };
+          }
+        }
+        bilateralSubBoxes.set(partId, entry);
       }
       anatomicalRoot.add(grp);
     });
@@ -378,6 +420,7 @@ export const AnatomyCanvas: React.FC<AnatomyCanvasProps> = ({
           hdScene.rotation.y = cfg.rotY;
         }
         hdScene.updateMatrixWorld(true);
+        ensureBoxUVs(hdScene, cfg.profile === 'bone' ? 2.2 : 1.8);
 
         const hdBox = new THREE.Box3().setFromObject(hdScene);
         const hdSize = hdBox.getSize(new THREE.Vector3());
@@ -413,7 +456,8 @@ export const AnatomyCanvas: React.FC<AnatomyCanvasProps> = ({
                 upgraded = upgradeHdOrganMaterial(
                   mesh.material,
                   cfg.profile,
-                  organMicroTex
+                  organMicroTex,
+                  ktx2Set
                 );
                 sourceMatCache.set(rawMat, upgraded);
                 hdMaterialsToDispose.push(upgraded);
@@ -444,6 +488,63 @@ export const AnatomyCanvas: React.FC<AnatomyCanvasProps> = ({
           hdScene.position.copy(hdCenter).multiplyScalar(-1);
           hdHolder.add(hdScene);
           beatPivot.add(hdHolder);
+        } else if (cfg.mirrorPair && cfg.bilateral && partGroup.userData.isBilateral) {
+          const rightSub =
+            partGroup.children.find((c) => c.userData.bilateralSide === -1) ??
+            partGroup;
+          const leftSub =
+            partGroup.children.find((c) => c.userData.bilateralSide === 1) ??
+            partGroup;
+          const centerSub =
+            partGroup.children.find((c) => c.userData.bilateralSide === 0) ??
+            partGroup;
+
+          [rightSub, leftSub, centerSub].forEach((sub) => {
+            [...sub.children].forEach((c) => sub.remove(c));
+          });
+
+          const subBoxes = bilateralSubBoxes.get(partId);
+          const rightBox = subBoxes?.right ?? baseBox;
+          const leftBox = subBoxes?.left ?? baseBox;
+          const pairScale =
+            Math.min(
+              rightBox.size.x / Math.max(hdSize.x, 1e-4),
+              rightBox.size.y / Math.max(hdSize.y, 1e-4),
+              rightBox.size.z / Math.max(hdSize.z, 1e-4)
+            ) * (cfg.scaleFit ?? 1.0);
+
+          const rightHolder = new THREE.Group();
+          rightHolder.position.copy(rightBox.center);
+          rightHolder.scale.setScalar(pairScale);
+          hdScene.position.copy(hdCenter).multiplyScalar(-1);
+          rightHolder.add(hdScene);
+          rightSub.add(rightHolder);
+
+          const leftClone = hdScene.clone(true);
+          mirrorObjectGeometryX(leftClone);
+          leftClone.traverse((child) => {
+            child.userData.partId = partId;
+            if ((child as THREE.Mesh).isMesh) {
+              const mesh = child as THREE.Mesh;
+              mesh.castShadow = true;
+              mesh.receiveShadow = true;
+              const baseMat = mesh.material as THREE.MeshPhysicalMaterial;
+              if (baseMat && hdPartEntries.length > 0) {
+                hdPartEntries.push({ mesh, baseMat });
+              }
+            }
+          });
+          leftClone.position.set(hdCenter.x, -hdCenter.y, -hdCenter.z);
+
+          const leftHolder = new THREE.Group();
+          leftHolder.position.copy(leftBox.center);
+          leftHolder.scale.setScalar(pairScale);
+          leftHolder.add(leftClone);
+          leftSub.add(leftHolder);
+
+          if (cfg.profile !== 'bone' && hdPartEntries.length > 0) {
+            partOriginalMaterials.set(partId, hdPartEntries);
+          }
         } else if (cfg.bilateral && partGroup.userData.isBilateral) {
           const rightSub =
             partGroup.children.find((c) => c.userData.bilateralSide === -1) ??
@@ -586,6 +687,9 @@ export const AnatomyCanvas: React.FC<AnatomyCanvasProps> = ({
               mesh.receiveShadow = !isSkin;
             }
           });
+          if (!isSkin) {
+            ensureBoxUVs(cloned, 2.2);
+          }
 
           partGroup.add(cloned);
 
@@ -637,6 +741,59 @@ export const AnatomyCanvas: React.FC<AnatomyCanvasProps> = ({
         }
       }
     );
+
+    // Async Basis Universal KTX2 GPU-compressed PBR normal & roughness upgrade
+    void loadKtx2PbrTextures(renderer).then((loadedKtx2) => {
+      if (isDisposed || !loadedKtx2) {
+        loadedKtx2?.dispose();
+        return;
+      }
+      ktx2Set = loadedKtx2;
+
+      boneBaseMat.normalMap = loadedKtx2.boneNormal;
+      boneBaseMat.normalScale.set(0.28, 0.28);
+      boneBaseMat.roughnessMap = loadedKtx2.boneRoughness;
+      boneBaseMat.bumpMap = null;
+      boneBaseMat.needsUpdate = true;
+
+      Object.entries(boneMaterialsById).forEach(([pid, bMat]) => {
+        const grp = allPartGroups[pid];
+        if (grp) ensureBoxUVs(grp, 2.2);
+        bMat.normalMap = loadedKtx2.boneNormal;
+        bMat.normalScale.set(0.28, 0.28);
+        bMat.roughnessMap = loadedKtx2.boneRoughness;
+        bMat.bumpMap = null;
+        bMat.needsUpdate = true;
+      });
+
+      partOriginalMaterials.forEach((entries, pid) => {
+        const p = PARTS_BY_ID[pid];
+        const grp = allPartGroups[pid];
+        if (!p || !grp) return;
+        const isOrganSurface =
+          p.system === 'organs' ||
+          pid.startsWith('organ_brain') ||
+          pid === 'organ_eyes';
+        const isMuscle = p.system === 'muscular';
+        if (!isOrganSurface && !isMuscle) return;
+
+        ensureBoxUVs(grp, 1.8);
+        entries.forEach(({ baseMat }) => {
+          const phys = baseMat as THREE.MeshPhysicalMaterial;
+          phys.normalMap = isMuscle
+            ? loadedKtx2.muscleNormal
+            : loadedKtx2.organNormal;
+          phys.normalScale.set(isMuscle ? 0.36 : 0.28, isMuscle ? 0.36 : 0.28);
+          if (!isMuscle) {
+            phys.roughnessMap = loadedKtx2.organRoughness;
+          }
+          phys.bumpMap = null;
+          phys.needsUpdate = true;
+        });
+      });
+
+      onKtx2ReadyRef.current?.(true);
+    });
 
     /* -------------------- 5. DIRECT 3D RAYCASTING (HOVER, CLICK, DOUBLE-CLICK) -------------------- */
     const raycaster = new THREE.Raycaster();
@@ -1271,6 +1428,7 @@ export const AnatomyCanvas: React.FC<AnatomyCanvasProps> = ({
       skinShellMat.dispose();
       boneMicroTex.dispose();
       organMicroTex.dispose();
+      ktx2Set?.dispose();
       envRenderTarget.dispose();
       pmremGenerator.dispose();
       gridHelper.dispose();

@@ -27,6 +27,7 @@ interface ClinicalInspectorProps {
   isolationGhostContext: boolean;
   hdStatus?: HdPartStatus;
   hdInfo?: HdManifestEntry | null;
+  ktx2Ready?: boolean;
   onClose: () => void;
   onSelectPart: (partId: string) => void;
   onToggleIsolate: (partId: string) => void;
@@ -45,6 +46,7 @@ export const ClinicalInspector: React.FC<ClinicalInspectorProps> = ({
   isolationGhostContext,
   hdStatus,
   hdInfo,
+  ktx2Ready,
   onClose,
   onSelectPart,
   onToggleIsolate,
@@ -290,7 +292,8 @@ export const ClinicalInspector: React.FC<ClinicalInspectorProps> = ({
                 <Sparkles size={11} color="#5eead4" />
                 <span>
                   HD Medical Mesh • {hdInfo.triangles.toLocaleString()} tris •{' '}
-                  {Math.round(hdInfo.compressedBytes / 1024)} KB (Draco)
+                  {Math.round(hdInfo.compressedBytes / 1024)} KB • Draco
+                  {ktx2Ready ? ' + KTX2 PBR' : ''}
                 </span>
               </>
             ) : null}

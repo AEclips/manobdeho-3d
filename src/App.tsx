@@ -76,6 +76,7 @@ export const App: React.FC = () => {
   const [hdManifest, setHdManifest] = useState<HdManifest | null>(null);
   const [hdPartStates, setHdPartStates] = useState<Record<string, HdPartStatus>>({});
   const [preloadAllHdTick, setPreloadAllHdTick] = useState(0);
+  const [ktx2Ready, setKtx2Ready] = useState(false);
 
   useEffect(() => {
     void fetchHdManifest().then((m) => {
@@ -449,6 +450,7 @@ export const App: React.FC = () => {
         onModelReady={handleModelReady}
         onModelError={handleModelError}
         onHdStatusChange={handleHdStatusChange}
+        onKtx2Ready={setKtx2Ready}
       />
 
       {/* Top Minimal VisionOS Frosted Status Pill */}
@@ -526,6 +528,7 @@ export const App: React.FC = () => {
         isolationGhostContext={isolationGhostContext}
         hdStatus={selectedPartId ? hdPartStates[selectedPartId] : undefined}
         hdInfo={selectedPartId ? hdManifest?.parts[selectedPartId] : undefined}
+        ktx2Ready={ktx2Ready}
         onClose={() => {
           setSelectedPartId(null);
           setIsolatedPartId(null);

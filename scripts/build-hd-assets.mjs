@@ -32,6 +32,18 @@ const UPSTREAM_URLS = {
     'https://raw.githubusercontent.com/ImliStack/Body-Atlas-3D/main/public/organs/kidneys.glb',
   'intestines.glb':
     'https://raw.githubusercontent.com/ImliStack/Body-Atlas-3D/main/public/organs/intestines.glb',
+  'eye.glb':
+    'https://raw.githubusercontent.com/ImliStack/Body-Atlas-3D/main/public/organs/eye.glb',
+  'larynx.glb':
+    'https://raw.githubusercontent.com/ImliStack/Body-Atlas-3D/main/public/organs/larynx.glb',
+  'esophagus.glb':
+    'https://raw.githubusercontent.com/ImliStack/Body-Atlas-3D/main/public/organs/esophagus.glb',
+  'pancreas.glb':
+    'https://raw.githubusercontent.com/ImliStack/Body-Atlas-3D/main/public/organs/pancreas.glb',
+  'spleen.glb':
+    'https://raw.githubusercontent.com/ImliStack/Body-Atlas-3D/main/public/organs/spleen.glb',
+  'bladder.glb':
+    'https://raw.githubusercontent.com/ImliStack/Body-Atlas-3D/main/public/organs/bladder.glb',
 };
 
 const DRACO_OPTS = {
@@ -283,7 +295,96 @@ async function main() {
     recomputeNormals: false,
   });
 
-  // 3. Medical High-Poly Skeletal Regions Sliced from BodyParts3D skeleton.glb (242 bones)
+  // 2B. 6 Newly Integrated Medical High-Poly Organs
+  const EYE_EXCLUDE = new Set([
+    'upper-tarsal-plate',
+    'lower-tarsal-plate',
+    'lacrimal-gland',
+    'levator-palpebrae',
+    'trochlea',
+  ]);
+  await processSingle({
+    partId: 'organ_eyes',
+    sourceFile: 'eye.glb',
+    outFile: 'eye.glb',
+    sourceLabel: 'BodyParts3D / OrganUI eye-3d (Globe, Cornea, Lens, Retina, Optic Nerve & 6 Muscles)',
+    license: 'CC BY-SA 2.1 JP',
+    keepPredicate: (n) => !EYE_EXCLUDE.has(n),
+    recomputeNormals: false,
+  });
+
+  await processSingle({
+    partId: 'organ_larynx',
+    sourceFile: 'larynx.glb',
+    outFile: 'larynx.glb',
+    sourceLabel: 'BodyParts3D / OrganUI larynx-3d (Thyroid/Cricoid Cartilages, Epiglottis & Vocal Cords)',
+    license: 'CC BY-SA 2.1 JP',
+    keepPredicate: (n) => n !== 'trachea',
+    recomputeNormals: false,
+  });
+
+  const ESOPHAGUS_NODES = new Set([
+    'esophagus',
+    'esophageal-arteries',
+    'right-vagus-nerve',
+    'left-vagus-nerve',
+  ]);
+  await processSingle({
+    partId: 'organ_esophagus',
+    sourceFile: 'esophagus.glb',
+    outFile: 'esophagus.glb',
+    sourceLabel: 'BodyParts3D / OrganUI esophagus-3d (Esophageal Tube, Arteries & Vagal Plexus)',
+    license: 'CC BY-SA 2.1 JP',
+    keepPredicate: (n) => ESOPHAGUS_NODES.has(n),
+    recomputeNormals: false,
+  });
+
+  const PANCREAS_NODES = new Set([
+    'pancreas',
+    'pancreatic-duct',
+    'pancreatic-arteries',
+    'pancreaticoduodenal-arteries',
+    'pancreaticoduodenal-veins',
+  ]);
+  await processSingle({
+    partId: 'organ_pancreas',
+    sourceFile: 'pancreas.glb',
+    outFile: 'pancreas.glb',
+    sourceLabel: 'BodyParts3D / OrganUI pancreas-3d (Pancreas, Wirsung Duct & Vascular Arcades)',
+    license: 'CC BY-SA 2.1 JP',
+    keepPredicate: (n) => PANCREAS_NODES.has(n),
+    recomputeNormals: false,
+  });
+
+  const SPLEEN_NODES = new Set(['spleen', 'splenic-artery', 'splenic-vein']);
+  await processSingle({
+    partId: 'organ_spleen',
+    sourceFile: 'spleen.glb',
+    outFile: 'spleen.glb',
+    sourceLabel: 'BodyParts3D / OrganUI spleen-3d (Splenic Parenchyma & Hilum Vessels)',
+    license: 'CC BY-SA 2.1 JP',
+    keepPredicate: (n) => SPLEEN_NODES.has(n),
+    recomputeNormals: false,
+  });
+
+  const BLADDER_NODES = new Set([
+    'urinary-bladder',
+    'urethra',
+    'prostate',
+    'right-seminal-vesicle',
+    'left-seminal-vesicle',
+  ]);
+  await processSingle({
+    partId: 'organ_bladder',
+    sourceFile: 'bladder.glb',
+    outFile: 'bladder.glb',
+    sourceLabel: 'BodyParts3D / OrganUI bladder-3d (Urinary Bladder, Urethra & Pelvic Outlet)',
+    license: 'CC BY-SA 2.1 JP',
+    keepPredicate: (n) => BLADDER_NODES.has(n),
+    recomputeNormals: false,
+  });
+
+  // 3. Complete 242-Bone Medical High-Poly Skeleton (5 Axial + 14 Appendicular Limb Regions)
   const CRANIUM_RE =
     /^(frontal-bone|.*parietal-bone|occipital-bone|.*temporal-bone|sphenoid-bone|ethmoid-bone|.*nasal-bone|.*lacrimal-bone|.*zygomatic-bone|.*maxilla|.*palatine-bone|.*inferior-nasal-concha|vomer)$/;
   const MANDIBLE_RE = /^mandible$/;
@@ -341,6 +442,106 @@ async function main() {
     recomputeNormals: false,
   });
 
+  // 3B. Remaining 14 Appendicular Upper & Lower Limb Skeletal Assemblies
+  const appendicularSlices = [
+    {
+      partId: 'SM_HumanSkeleton_15',
+      outFile: 'r-shoulder.glb',
+      label: 'Right Clavicle & Scapula',
+      re: /^right-(clavicle|scapula)$/,
+    },
+    {
+      partId: 'SM_HumanSkeleton_13',
+      outFile: 'l-shoulder.glb',
+      label: 'Left Clavicle & Scapula',
+      re: /^left-(clavicle|scapula)$/,
+    },
+    {
+      partId: 'SM_HumanSkeleton_10',
+      outFile: 'r-humerus.glb',
+      label: 'Right Humerus',
+      re: /^right-humerus$/,
+    },
+    {
+      partId: 'SM_HumanSkeleton_12',
+      outFile: 'l-humerus.glb',
+      label: 'Left Humerus',
+      re: /^left-humerus$/,
+    },
+    {
+      partId: 'SM_HumanSkeleton_02',
+      outFile: 'r-forearm.glb',
+      label: 'Right Radius & Ulna',
+      re: /^right-(radius|ulna)$/,
+    },
+    {
+      partId: 'SM_HumanSkeleton_01',
+      outFile: 'l-forearm.glb',
+      label: 'Left Radius & Ulna',
+      re: /^left-(radius|ulna)$/,
+    },
+    {
+      partId: 'SM_HumanSkeleton_19',
+      outFile: 'r-hand.glb',
+      label: 'Right 27-Bone Carpus, Metacarpals & Phalanges',
+      re: /^right-(scaphoid|lunate|triquetral|pisiform|trapezium|trapezoid|capitate|hamate|.*metacarpal.*|.*finger.*|thumb-.*)$/,
+    },
+    {
+      partId: 'SM_HumanSkeleton_14',
+      outFile: 'l-hand.glb',
+      label: 'Left 27-Bone Carpus, Metacarpals & Phalanges',
+      re: /^left-(scaphoid|lunate|triquetral|pisiform|trapezium|trapezoid|capitate|hamate|.*metacarpal.*|.*finger.*|thumb-.*)$/,
+    },
+    {
+      partId: 'SM_HumanSkeleton_04',
+      outFile: 'r-femur.glb',
+      label: 'Right Femur & Patella',
+      re: /^right-(femur|patella)$/,
+    },
+    {
+      partId: 'SM_HumanSkeleton_05',
+      outFile: 'l-femur.glb',
+      label: 'Left Femur & Patella',
+      re: /^left-(femur|patella)$/,
+    },
+    {
+      partId: 'SM_HumanSkeleton_07',
+      outFile: 'r-shin.glb',
+      label: 'Right Tibia & Fibula',
+      re: /^right-(tibia|fibula)$/,
+    },
+    {
+      partId: 'SM_HumanSkeleton_06',
+      outFile: 'l-shin.glb',
+      label: 'Left Tibia & Fibula',
+      re: /^left-(tibia|fibula)$/,
+    },
+    {
+      partId: 'SM_HumanSkeleton_09',
+      outFile: 'r-foot.glb',
+      label: 'Right 26-Bone Tarsus, Metatarsals & Toes',
+      re: /^right-(talus|calcaneus|navicular|cuboid|.*cuneiform|.*metatarsal.*|.*toe.*|sesamoid-bones-of-the-foot)$/,
+    },
+    {
+      partId: 'SM_HumanSkeleton_03',
+      outFile: 'l-foot.glb',
+      label: 'Left 26-Bone Tarsus, Metatarsals & Toes',
+      re: /^left-(talus|calcaneus|navicular|cuboid|.*cuneiform|.*metatarsal.*|.*toe.*|sesamoid-bones-of-the-foot)$/,
+    },
+  ];
+
+  for (const s of appendicularSlices) {
+    await processSingle({
+      partId: s.partId,
+      sourceFile: 'skeleton-bp3d.glb',
+      outFile: s.outFile,
+      sourceLabel: `BodyParts3D / OrganUI skeleton-3d (${s.label})`,
+      license: 'CC BY-SA 2.1 JP',
+      keepPredicate: (n) => s.re.test(n),
+      recomputeNormals: false,
+    });
+  }
+
   const manifest = {
     generatedAt: new Date().toISOString(),
     baseSkeleton: {
@@ -381,7 +582,7 @@ The high-resolution on-demand anatomical meshes in \`public/models/hd/\` are Dra
 - **CC BY 4.0** (https://creativecommons.org/licenses/by/4.0/):
   - \`heart.glb\`, \`cerebrum.glb\`, \`cerebellum.glb\`, \`liver.glb\`, \`kidneys.glb\`
 - **CC BY-SA 2.1 Japan** (https://creativecommons.org/licenses/by-sa/2.1/jp/deed.en):
-  - \`lungs.glb\`, \`stomach.glb\`, \`intestines.glb\`, \`cranium.glb\`, \`mandible.glb\`, \`thorax.glb\`, \`spine.glb\`, \`pelvis.glb\`
+  - \`lungs.glb\`, \`stomach.glb\`, \`intestines.glb\`, \`eye.glb\`, \`larynx.glb\`, \`esophagus.glb\`, \`pancreas.glb\`, \`spleen.glb\`, \`bladder.glb\`, and all 19 full-skeleton regions (\`cranium.glb\`, \`mandible.glb\`, \`thorax.glb\`, \`spine.glb\`, \`pelvis.glb\`, \`r/l-shoulder.glb\`, \`r/l-humerus.glb\`, \`r/l-forearm.glb\`, \`r/l-hand.glb\`, \`r/l-femur.glb\`, \`r/l-shin.glb\`, \`r/l-foot.glb\`)
 
 ## Modifications Performed
 All upstream meshes were welded, normalized, pruned into region-specific modules, and compressed with \`KHR_draco_mesh_compression\` using \`@gltf-transform\` + \`draco3dgltf\` for fast progressive web streaming. ShareAlike (CC BY-SA) adapted models remain licensed under the same CC BY-SA terms. Educational visualization only — not for clinical diagnosis.

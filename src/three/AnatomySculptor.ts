@@ -960,6 +960,155 @@ export function buildSculptedAnatomy(): SculptedAnatomyResult {
   }
 
   /* ============================================================================
+     9B. BILATERAL OCULAR GLOBES, IRIS & OPTIC NERVES
+     ============================================================================ */
+  {
+    const { grp, sideGroup } = createBilateralGroup();
+    [-1, 1].forEach((side) => {
+      const target = sideGroup(side);
+      const ex = side * 3.15;
+      const ey = 171.6;
+      const ez = 4.55;
+
+      const sclera = new THREE.Mesh(
+        new THREE.SphereGeometry(1.12, 20, 16),
+        tendonMat
+      );
+      sclera.position.set(ex, ey, ez);
+      target.add(sclera);
+
+      const irisDisc = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.48, 0.52, 0.22, 16),
+        veinMat
+      );
+      irisDisc.rotation.x = Math.PI / 2;
+      irisDisc.position.set(ex, ey, ez + 0.98);
+      target.add(irisDisc);
+
+      const opticStem = makeTubeMesh(
+        [
+          [ex, ey, ez - 0.95],
+          [ex * 0.65, ey - 0.2, ez - 2.35],
+        ],
+        0.22,
+        8,
+        nerveMat,
+        6
+      );
+      target.add(opticStem);
+    });
+
+    tagPartGroup(grp, 'organ_eyes');
+    partGroups['organ_eyes'] = trackGeom(grp);
+  }
+
+  /* ============================================================================
+     9C. LARYNX & VOCAL APPARATUS
+     ============================================================================ */
+  {
+    const grp = new THREE.Group();
+    const shield = new THREE.Mesh(
+      new THREE.CylinderGeometry(1.45, 1.25, 3.8, 16),
+      cartilageMat
+    );
+    shield.scale.set(1.05, 1.0, 0.92);
+    shield.position.set(0, 160.8, 0.8);
+    grp.add(shield);
+
+    const epiglottis = new THREE.Mesh(
+      new THREE.SphereGeometry(0.85, 12, 10),
+      stomachMat
+    );
+    epiglottis.scale.set(1.05, 1.25, 0.35);
+    epiglottis.position.set(0, 162.8, 1.15);
+    grp.add(epiglottis);
+
+    tagPartGroup(grp, 'organ_larynx');
+    partGroups['organ_larynx'] = trackGeom(grp);
+  }
+
+  /* ============================================================================
+     9D. ESOPHAGUS (POSTERIOR THORACIC MUSCULAR CONDUIT)
+     ============================================================================ */
+  {
+    const grp = new THREE.Group();
+    const esophTube = makeTubeMesh(
+      [
+        [0.0, 158.0, -2.1],
+        [0.15, 148.5, -2.8],
+        [0.45, 138.0, -3.2],
+        [0.85, 124.2, -1.4],
+      ],
+      0.68,
+      24,
+      stomachMat,
+      10
+    );
+    grp.add(esophTube);
+
+    tagPartGroup(grp, 'organ_esophagus');
+    partGroups['organ_esophagus'] = trackGeom(grp);
+  }
+
+  /* ============================================================================
+     9E. PANCREAS (RETROPERITONEAL HEAD, BODY & TAIL)
+     ============================================================================ */
+  {
+    const grp = new THREE.Group();
+    const pancMesh = makeVariableTube(
+      [
+        [-1.35, 112.2, -0.5],
+        [0.45, 113.4, -1.2],
+        [3.1, 114.6, -2.0],
+        [5.6, 115.8, -2.6],
+      ],
+      (t) => 1.55 * (1 - 0.52 * t),
+      22,
+      12,
+      nerveMat
+    );
+    grp.add(pancMesh);
+
+    tagPartGroup(grp, 'organ_pancreas');
+    partGroups['organ_pancreas'] = trackGeom(grp);
+  }
+
+  /* ============================================================================
+     9F. SPLEEN (LEFT HYPOCHONDRIUM LYMPHOID ORGAN)
+     ============================================================================ */
+  {
+    const grp = new THREE.Group();
+    const spleenMesh = new THREE.Mesh(
+      new THREE.SphereGeometry(2.1, 20, 16),
+      kidneyMat
+    );
+    spleenMesh.scale.set(0.74, 1.42, 0.95);
+    spleenMesh.position.set(7.6, 117.2, -1.6);
+    spleenMesh.rotation.z = -0.35;
+    grp.add(spleenMesh);
+
+    tagPartGroup(grp, 'organ_spleen');
+    partGroups['organ_spleen'] = trackGeom(grp);
+  }
+
+  /* ============================================================================
+     9G. URINARY BLADDER & PELVIC OUTLET
+     ============================================================================ */
+  {
+    const grp = new THREE.Group();
+    const bladderDome = new THREE.Mesh(
+      new THREE.SphereGeometry(2.05, 18, 16),
+      stomachMat
+    );
+    bladderDome.scale.set(1.06, 0.9, 1.08);
+    bladderDome.position.set(0, 91.5, 3.0);
+    grp.add(bladderDome);
+
+    tagPartGroup(grp, 'organ_bladder');
+    partGroups['organ_bladder'] = trackGeom(grp);
+  }
+
+  /* ============================================================================
      10. SPINAL CORD & INTERCOSTAL NERVE ROOTS
      ============================================================================ */
   {
