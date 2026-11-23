@@ -298,11 +298,15 @@ export function ensureBoxUVs(root: THREE.Object3D, uvScale = 1.6): void {
  * Mirrors an Object3D's cloned BufferGeometries across X while reversing triangle
  * winding order so normals stay outward-facing for bilateral anatomy (e.g. Left Eye).
  */
-export function mirrorObjectGeometryX(root: THREE.Object3D): void {
+export function mirrorObjectGeometryX(
+  root: THREE.Object3D,
+  outGeometries?: THREE.BufferGeometry[]
+): void {
   root.traverse((obj) => {
     if (!(obj as THREE.Mesh).isMesh) return;
     const mesh = obj as THREE.Mesh;
     const geom = mesh.geometry.clone();
+    outGeometries?.push(geom);
     const pos = geom.attributes.position;
     if (pos) {
       for (let i = 0; i < pos.count; i++) {

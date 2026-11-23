@@ -139,31 +139,44 @@ export const App: React.FC = () => {
 
   const effectiveProgress =
     manualProgress !== null ? manualProgress : scrollProgress;
+  const effectiveProgressRef = useRef(effectiveProgress);
+  effectiveProgressRef.current = effectiveProgress;
 
-  const handleManualProgress = useCallback((val: number) => {
-    setAutoDissect(false);
-    setManualProgress(val);
-    if (
-      progressBarRef.current &&
-      !CSS.supports('animation-timeline', 'scroll()')
-    ) {
-      progressBarRef.current.style.transform = `scaleX(${val})`;
-    }
-  }, []);
+  const handleManualProgress = useCallback(
+    (val: number) => {
+      setAutoDissect(false);
+      setManualProgress(val);
+      setActiveChapter(getChapterForProgress(val));
+      if (
+        progressBarRef.current &&
+        !CSS.supports('animation-timeline', 'scroll()')
+      ) {
+        progressBarRef.current.style.transform = `scaleX(${val})`;
+      }
+    },
+    [getChapterForProgress]
+  );
 
   /* -------------------- AUTO-DISSECT SWEEP & FULLSCREEN API -------------------- */
   useEffect(() => {
     if (!autoDissect) return;
     let rafId = 0;
     let lastTime = performance.now();
-    let currentVal = manualProgress !== null ? manualProgress : scrollProgress;
+    let currentVal = effectiveProgressRef.current;
     if (currentVal >= 0.99) currentVal = 0;
+
+    const supportsNativeTimeline =
+      typeof CSS !== 'undefined' && CSS.supports('animation-timeline', 'scroll()');
 
     const tick = (now: number) => {
       const dt = Math.min(0.05, (now - lastTime) / 1000);
       lastTime = now;
       currentVal = Math.min(1, currentVal + dt * 0.14);
       setManualProgress(currentVal);
+      setActiveChapter(getChapterForProgress(currentVal));
+      if (!supportsNativeTimeline && progressBarRef.current) {
+        progressBarRef.current.style.transform = `scaleX(${currentVal})`;
+      }
       if (currentVal >= 1) {
         setAutoDissect(false);
         return;
@@ -172,7 +185,7 @@ export const App: React.FC = () => {
     };
     rafId = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(rafId);
-  }, [autoDissect]);
+  }, [autoDissect, getChapterForProgress]);
 
   useEffect(() => {
     const onFsChange = () => {
@@ -205,21 +218,34 @@ export const App: React.FC = () => {
   }, []);
 
   /* -------------------- NAVIGATION & SELECTION ACTIONS -------------------- */
-  const handleSelectChapter = useCallback((idx: number) => {
-    setManualProgress(null);
-    setIsolatedPartId(null);
-    setCameraPreset('default');
-    if (cinemaMode) {
-      const targetProgress = CHAPTERS[idx]?.range[0] ?? 0;
-      setManualProgress(targetProgress + 0.04);
+  const handleSelectChapter = useCallback(
+    (idx: number) => {
+      setAutoDissect(false);
+      setManualProgress(null);
+      setIsolatedPartId(null);
+      setCameraPreset('default');
       setActiveChapter(idx);
-      return;
-    }
-    const el = document.getElementById(`chapter-sec-${idx}`);
-    if (el) {
-      el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }
-  }, [cinemaMode]);
+      const targetProgress =
+        idx === 0 ? 0 : Math.min(1, (CHAPTERS[idx]?.range[0] ?? 0) + 0.04);
+      setScrollProgress(targetProgress);
+      if (
+        progressBarRef.current &&
+        typeof CSS !== 'undefined' &&
+        !CSS.supports('animation-timeline', 'scroll()')
+      ) {
+        progressBarRef.current.style.transform = `scaleX(${targetProgress})`;
+      }
+      if (cinemaMode) {
+        setManualProgress(targetProgress);
+        return;
+      }
+      const el = document.getElementById(`chapter-sec-${idx}`);
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    },
+    [cinemaMode]
+  );
 
   const ensureSystemActive = useCallback((partId: string) => {
     const part = PARTS_BY_ID[partId];
@@ -329,8 +355,14 @@ export const App: React.FC = () => {
       if (e.key === '/' && !searchOpen) {
         e.preventDefault();
         setSearchOpen(true);
-      } else if (e.key === 'Escape' && !searchOpen && isolatedPartId) {
-        setIsolatedPartId(null);
+      } else if (e.key === 'Escape' && !searchOpen) {
+        if (isolatedPartId) {
+          setIsolatedPartId(null);
+        } else if (layersOpen) {
+          setLayersOpen(false);
+        } else if (selectedPartId) {
+          setSelectedPartId(null);
+        }
       } else if (e.key >= '1' && e.key <= '7') {
         handleSelectChapter(parseInt(e.key, 10) - 1);
       } else if (e.key.toLowerCase() === 'o') {
@@ -357,7 +389,9 @@ export const App: React.FC = () => {
     handleToggleFullscreen,
     handleToggleSlice,
     isolatedPartId,
+    layersOpen,
     searchOpen,
+    selectedPartId,
   ]);
 
   const handleModelReady = useCallback((count: number) => {

@@ -364,6 +364,8 @@ export const AnatomyCanvas: React.FC<AnatomyCanvasProps> = ({
     const hdInFlightSet = new Set<string>();
     const pendingHdAfterSkeleton = new Set<string>();
     const hdMaterialsToDispose: THREE.Material[] = [];
+    const clonedSculptMaterialsToDispose: THREE.Material[] = [];
+    const hdGeometriesToDispose: THREE.BufferGeometry[] = [];
     const originalSculptColors = new Map<
       THREE.Material,
       { color: number; emissive: number; emissiveIntensity: number; opacity: number }
@@ -437,6 +439,7 @@ export const AnatomyCanvas: React.FC<AnatomyCanvasProps> = ({
         if ((child as THREE.Mesh).isMesh) {
           const mesh = child as THREE.Mesh;
           const cloned = (mesh.material as THREE.MeshPhysicalMaterial).clone();
+          clonedSculptMaterialsToDispose.push(cloned);
           mesh.material = cloned;
           entries.push({ mesh, baseMat: cloned });
           originalSculptColors.set(cloned, {
@@ -582,7 +585,9 @@ export const AnatomyCanvas: React.FC<AnatomyCanvasProps> = ({
           rightSub.add(rightHolder);
 
           const leftClone = hdScene.clone(true);
-          mirrorObjectGeometryX(leftClone);
+          leftClone.position.set(0, 0, 0);
+          leftClone.updateMatrixWorld(true);
+          mirrorObjectGeometryX(leftClone, hdGeometriesToDispose);
           leftClone.traverse((child) => {
             child.userData.partId = partId;
             if ((child as THREE.Mesh).isMesh) {
@@ -595,7 +600,9 @@ export const AnatomyCanvas: React.FC<AnatomyCanvasProps> = ({
               }
             }
           });
-          leftClone.position.set(hdCenter.x, -hdCenter.y, -hdCenter.z);
+          leftClone.updateMatrixWorld(true);
+          const leftCenter = new THREE.Box3().setFromObject(leftClone).getCenter(new THREE.Vector3());
+          leftClone.position.copy(leftCenter).multiplyScalar(-1);
 
           const leftHolder = new THREE.Group();
           leftHolder.position.copy(leftBox.center);
@@ -627,6 +634,10 @@ export const AnatomyCanvas: React.FC<AnatomyCanvasProps> = ({
             restCenter: THREE.Vector3;
           }> = [];
 
+          hdScene.updateMatrixWorld(true);
+          const invHdSceneWorld = new THREE.Matrix4().copy(hdScene.matrixWorld).invert();
+          const relMat = new THREE.Matrix4();
+
           hdScene.traverse((obj) => {
             if ((obj as THREE.Mesh).isMesh) {
               const m = obj as THREE.Mesh;
@@ -638,6 +649,11 @@ export const AnatomyCanvas: React.FC<AnatomyCanvasProps> = ({
               else if (/^left-/i.test(m.name)) side = 1;
               else if (relX < -hdSize.x * 0.08) side = -1;
               else if (relX > hdSize.x * 0.08) side = 1;
+
+              relMat.multiplyMatrices(invHdSceneWorld, m.matrixWorld);
+              m.matrix.copy(relMat);
+              m.matrix.decompose(m.position, m.quaternion, m.scale);
+              m.updateMatrix();
 
               const restCenter = mc
                 .clone()
@@ -940,11 +956,16 @@ export const AnatomyCanvas: React.FC<AnatomyCanvasProps> = ({
       }
     };
 
+    const handlePointerLeave = () => {
+      setHoveredId(null);
+    };
+
     const domEl = renderer.domElement;
     domEl.addEventListener('pointerdown', handlePointerDown);
     domEl.addEventListener('pointermove', handlePointerMove);
     domEl.addEventListener('pointerup', handlePointerUp);
     domEl.addEventListener('dblclick', handleDoubleClick);
+    domEl.addEventListener('pointerleave', handlePointerLeave);
 
     /* -------------------- 6. ANIMATION LOOP & DISSECTION PHYSICS -------------------- */
     const clock = new THREE.Clock();
@@ -971,6 +992,7 @@ export const AnatomyCanvas: React.FC<AnatomyCanvasProps> = ({
     const sliceBoxMax = new THREE.Vector3();
     const sliceLocalCenter = new THREE.Vector3();
     const sliceHalfSize = new THREE.Vector3();
+    const dynamicBodyBox = new THREE.Box3();
 
     const PRESET_VIEWS: Record<
       Exclude<CameraPreset, 'default'>,
@@ -1316,6 +1338,34 @@ export const AnatomyCanvas: React.FC<AnatomyCanvasProps> = ({
             boxCenter.z + dist
           );
           prevIsolatedRef.current = state.isolatedPartId;
+          presetBlendTimer = 0;
+        } else if (presetBlendTimer > 0) {
+          presetBlendTimer = Math.max(0, presetBlendTimer - delta);
+          const isoPart = PARTS_BY_ID[state.isolatedPartId];
+          const dist = isoPart?.isolateDistance ?? 0.85;
+          if (state.cameraPreset === 'anterior') {
+            desiredCamPos.set(boxCenter.x, boxCenter.y, boxCenter.z + dist);
+          } else if (state.cameraPreset === 'posterior') {
+            desiredCamPos.set(boxCenter.x, boxCenter.y, boxCenter.z - dist);
+          } else if (state.cameraPreset === 'left') {
+            desiredCamPos.set(boxCenter.x + dist, boxCenter.y, boxCenter.z);
+          } else if (state.cameraPreset === 'right') {
+            desiredCamPos.set(boxCenter.x - dist, boxCenter.y, boxCenter.z);
+          } else if (state.cameraPreset === 'superior') {
+            desiredCamPos.set(
+              boxCenter.x,
+              boxCenter.y + dist * 0.95,
+              boxCenter.z + dist * 0.22
+            );
+          } else {
+            desiredCamPos.set(
+              boxCenter.x + dist * 0.25,
+              boxCenter.y + dist * 0.14,
+              boxCenter.z + dist
+            );
+          }
+          camera.position.lerp(desiredCamPos, Math.min(1, delta * 5.2));
+          controls.target.lerp(boxCenter, Math.min(1, delta * 6.0));
         } else {
           controls.target.lerp(boxCenter, Math.min(1, delta * 6));
         }
@@ -1396,8 +1446,36 @@ export const AnatomyCanvas: React.FC<AnatomyCanvasProps> = ({
           sliceBoxMin.copy(sliceLocalCenter).sub(sliceHalfSize);
           sliceBoxMax.copy(sliceLocalCenter).add(sliceHalfSize);
         } else {
-          sliceBoxMin.copy(bodyLocalBox.min);
-          sliceBoxMax.copy(bodyLocalBox.max);
+          dynamicBodyBox.makeEmpty();
+          ANATOMY_PARTS.forEach((part) => {
+            if (part.id === 'skin_envelope') return;
+            const grp = allPartGroups[part.id];
+            const rest = restLocalBoxes.get(part.id);
+            if (!grp || !grp.visible || !rest) return;
+            let maxSpreadX = 0;
+            if (grp.userData.isBilateral) {
+              for (let ci = 0; ci < grp.children.length; ci++) {
+                maxSpreadX = Math.max(maxSpreadX, Math.abs(grp.children[ci].position.x));
+              }
+            }
+            sliceHalfSize.set(
+              rest.size.x * 0.5 + maxSpreadX,
+              rest.size.y * 0.5,
+              rest.size.z * 0.5
+            );
+            sliceLocalCenter.copy(rest.center).add(grp.position);
+            sliceBoxMin.copy(sliceLocalCenter).sub(sliceHalfSize);
+            sliceBoxMax.copy(sliceLocalCenter).add(sliceHalfSize);
+            dynamicBodyBox.expandByPoint(sliceBoxMin);
+            dynamicBodyBox.expandByPoint(sliceBoxMax);
+          });
+          if (dynamicBodyBox.isEmpty()) {
+            sliceBoxMin.copy(bodyLocalBox.min);
+            sliceBoxMax.copy(bodyLocalBox.max);
+          } else {
+            sliceBoxMin.copy(dynamicBodyBox.min);
+            sliceBoxMax.copy(dynamicBodyBox.max);
+          }
         }
 
         const cx = (sliceBoxMin.x + sliceBoxMax.x) * 0.5;
@@ -1444,9 +1522,11 @@ export const AnatomyCanvas: React.FC<AnatomyCanvasProps> = ({
       const pinsRoot = pinsRef.current;
       if (pinsRoot) {
         if (!state.showPins || (state.scrollProgress < 0.05 && !state.isolatedPartId)) {
+          pinsRoot.style.display = 'none';
           pinsRoot.style.opacity = '0';
           pinsRoot.style.pointerEvents = 'none';
         } else {
+          pinsRoot.style.display = 'block';
           pinsRoot.style.opacity = '1';
           const w = window.innerWidth;
           const h = window.innerHeight;
@@ -1566,9 +1646,12 @@ export const AnatomyCanvas: React.FC<AnatomyCanvasProps> = ({
       domEl.removeEventListener('pointermove', handlePointerMove);
       domEl.removeEventListener('pointerup', handlePointerUp);
       domEl.removeEventListener('dblclick', handleDoubleClick);
+      domEl.removeEventListener('pointerleave', handlePointerLeave);
       controls.dispose();
       sculpted.dispose();
       hdMaterialsToDispose.forEach((m) => m.dispose());
+      clonedSculptMaterialsToDispose.forEach((m) => m.dispose());
+      hdGeometriesToDispose.forEach((g) => g.dispose());
       Object.values(boneMaterialsById).forEach((m) => m.dispose());
       boneBaseMat.dispose();
       skinShellMat.dispose();
