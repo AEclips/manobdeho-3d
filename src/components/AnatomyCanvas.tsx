@@ -1047,10 +1047,14 @@ export const AnatomyCanvas: React.FC<AnatomyCanvasProps> = ({
           Math.min(1, (state.scrollProgress - stStart) / Math.max(0.01, stEnd - stStart))
         );
         const easeOutT = 1 - Math.pow(1 - rawT, 3);
+        const isIsolatedTarget = state.isolatedPartId === part.id;
         const isBilateral = Boolean(grp.userData.isBilateral);
         const peelScale = state.dissectionMode === 'peel' ? 0.28 : 1.0;
 
-        if (state.dissectionMode === 'peel' && sysCfg) {
+        if (isIsolatedTarget) {
+          targetPos.set(0, 0, 0);
+          targetRot.set(0, 0, 0);
+        } else if (state.dissectionMode === 'peel' && sysCfg) {
           targetPos.set(
             sysCfg.peelOffset[0] * peelEase +
               (isBilateral ? 0 : part.explodeOffset[0] * 0.28 * easeOutT),
@@ -1081,7 +1085,9 @@ export const AnatomyCanvas: React.FC<AnatomyCanvasProps> = ({
         grp.rotation.z = THREE.MathUtils.lerp(grp.rotation.z, targetRot.z, Math.min(1, delta * 9));
 
         if (isBilateral) {
-          const lateralMag = Math.abs(part.explodeOffset[0]) * peelScale * easeOutT;
+          const lateralMag = isIsolatedTarget
+            ? 0
+            : Math.abs(part.explodeOffset[0]) * peelScale * easeOutT;
           for (let ci = 0; ci < grp.children.length; ci++) {
             const sub = grp.children[ci];
             const bSide = sub.userData.bilateralSide as number | undefined;
@@ -1325,8 +1331,13 @@ export const AnatomyCanvas: React.FC<AnatomyCanvasProps> = ({
       if (state.isolatedPartId && isolatedGroup) {
         controls.enabled = true;
         anatomicalRoot.updateMatrixWorld(true);
-        box3.setFromObject(isolatedGroup);
-        box3.getCenter(boxCenter);
+        const isoRest = restLocalBoxes.get(state.isolatedPartId);
+        if (isoRest) {
+          boxCenter.copy(isoRest.center).applyMatrix4(anatomicalRoot.matrixWorld);
+        } else {
+          box3.setFromObject(isolatedGroup);
+          box3.getCenter(boxCenter);
+        }
 
         if (prevIsolatedRef.current !== state.isolatedPartId) {
           const isoPart = PARTS_BY_ID[state.isolatedPartId];
